@@ -1083,7 +1083,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
             ),
             initial_message=final_initial_message,
             secrets=secrets,
-            plugin_source=plugin.source if plugin else None,
+            plugin_source=plugin.get_resolved_source() if plugin else None,
             plugin_ref=plugin.ref if plugin else None,
         )
 

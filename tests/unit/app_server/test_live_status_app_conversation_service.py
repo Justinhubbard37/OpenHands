@@ -2087,6 +2087,65 @@ class TestPluginHandling:
         assert result.initial_message is None
 
     @pytest.mark.asyncio
+    @patch(
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl'
+    )
+    async def test_finalize_conversation_request_plugin_with_path(
+        self, mock_experiment_manager
+    ):
+        """Test _finalize_conversation_request resolves plugin path correctly."""
+        from openhands.app_server.app_conversation.app_conversation_models import (
+            PluginSpec,
+        )
+
+        # Arrange
+        mock_agent = Mock(spec=Agent)
+        mock_llm = Mock(spec=LLM)
+        mock_llm.model = 'gpt-4'
+        mock_llm.usage_id = 'agent'
+
+        mock_updated_agent = Mock(spec=Agent)
+        mock_updated_agent.llm = mock_llm
+        mock_updated_agent.condenser = None
+        mock_experiment_manager.run_agent_variant_tests__v1.return_value = (
+            mock_updated_agent
+        )
+
+        workspace = LocalWorkspace(working_dir='/test')
+        secrets = {}
+
+        # Plugin with path (for marketplace repos containing multiple plugins)
+        plugin = PluginSpec(
+            source='github:owner/marketplace-repo',
+            ref='main',
+            path='plugins/city-weather',
+        )
+
+        # Act
+        result = await self.service._finalize_conversation_request(
+            mock_agent,
+            None,
+            self.mock_user,
+            workspace,
+            None,
+            secrets,
+            self.mock_sandbox,
+            None,
+            None,
+            '/test/dir',
+            plugin=plugin,
+        )
+
+        # Assert
+        assert isinstance(result, StartConversationRequest)
+        # The plugin_source should be the resolved source with path appended
+        assert (
+            result.plugin_source
+            == 'github:owner/marketplace-repo/plugins/city-weather'
+        )
+        assert result.plugin_ref == 'main'
+
+    @pytest.mark.asyncio
     async def test_build_start_conversation_request_for_user_with_plugin(self):
         """Test _build_start_conversation_request_for_user passes plugin to finalize method."""
         from openhands.app_server.app_conversation.app_conversation_models import (
@@ -2164,11 +2223,13 @@ class TestPluginSpecModel:
         plugin = PluginSpec(
             source='github:owner/repo',
             ref='v1.0.0',
+            path='plugins/my-plugin',
             parameters={'key1': 'value1', 'key2': 123, 'key3': True},
         )
 
         assert plugin.source == 'github:owner/repo'
         assert plugin.ref == 'v1.0.0'
+        assert plugin.path == 'plugins/my-plugin'
         assert plugin.parameters == {'key1': 'value1', 'key2': 123, 'key3': True}
 
     def test_plugin_spec_with_only_source(self):
@@ -2181,6 +2242,7 @@ class TestPluginSpecModel:
 
         assert plugin.source == 'https://github.com/owner/repo.git'
         assert plugin.ref is None
+        assert plugin.path is None
         assert plugin.parameters is None
 
     def test_plugin_spec_serialization(self):
@@ -2192,6 +2254,7 @@ class TestPluginSpecModel:
         plugin = PluginSpec(
             source='github:owner/repo',
             ref='main',
+            path='plugins/my-plugin',
             parameters={'debug': True},
         )
 
@@ -2199,6 +2262,7 @@ class TestPluginSpecModel:
         assert json_data == {
             'source': 'github:owner/repo',
             'ref': 'main',
+            'path': 'plugins/my-plugin',
             'parameters': {'debug': True},
         }
 
@@ -2211,6 +2275,7 @@ class TestPluginSpecModel:
         data = {
             'source': 'github:owner/repo',
             'ref': 'v2.0.0',
+            'path': 'plugins/weather',
             'parameters': {'timeout': 30},
         }
 
@@ -2218,7 +2283,68 @@ class TestPluginSpecModel:
 
         assert plugin.source == 'github:owner/repo'
         assert plugin.ref == 'v2.0.0'
+        assert plugin.path == 'plugins/weather'
         assert plugin.parameters == {'timeout': 30}
+
+    def test_get_resolved_source_without_path(self):
+        """Test get_resolved_source returns source unchanged when no path is set."""
+        from openhands.app_server.app_conversation.app_conversation_models import (
+            PluginSpec,
+        )
+
+        plugin = PluginSpec(source='github:owner/repo')
+        assert plugin.get_resolved_source() == 'github:owner/repo'
+
+    def test_get_resolved_source_with_path(self):
+        """Test get_resolved_source appends path to source."""
+        from openhands.app_server.app_conversation.app_conversation_models import (
+            PluginSpec,
+        )
+
+        plugin = PluginSpec(source='github:owner/repo', path='plugins/my-plugin')
+        assert plugin.get_resolved_source() == 'github:owner/repo/plugins/my-plugin'
+
+    def test_get_resolved_source_normalizes_trailing_slash_on_source(self):
+        """Test get_resolved_source removes trailing slash from source."""
+        from openhands.app_server.app_conversation.app_conversation_models import (
+            PluginSpec,
+        )
+
+        plugin = PluginSpec(source='github:owner/repo/', path='plugins/my-plugin')
+        assert plugin.get_resolved_source() == 'github:owner/repo/plugins/my-plugin'
+
+    def test_get_resolved_source_normalizes_leading_slash_on_path(self):
+        """Test get_resolved_source removes leading slash from path."""
+        from openhands.app_server.app_conversation.app_conversation_models import (
+            PluginSpec,
+        )
+
+        plugin = PluginSpec(source='github:owner/repo', path='/plugins/my-plugin')
+        assert plugin.get_resolved_source() == 'github:owner/repo/plugins/my-plugin'
+
+    def test_get_resolved_source_normalizes_both_slashes(self):
+        """Test get_resolved_source handles both trailing and leading slashes."""
+        from openhands.app_server.app_conversation.app_conversation_models import (
+            PluginSpec,
+        )
+
+        plugin = PluginSpec(source='github:owner/repo/', path='/plugins/my-plugin/')
+        assert plugin.get_resolved_source() == 'github:owner/repo/plugins/my-plugin'
+
+    def test_get_resolved_source_with_local_path(self):
+        """Test get_resolved_source works with local filesystem paths."""
+        from openhands.app_server.app_conversation.app_conversation_models import (
+            PluginSpec,
+        )
+
+        plugin = PluginSpec(
+            source='/home/user/.cache/plugins/repo-abc123',
+            path='plugins/city-weather',
+        )
+        assert (
+            plugin.get_resolved_source()
+            == '/home/user/.cache/plugins/repo-abc123/plugins/city-weather'
+        )
 
 
 class TestAppConversationStartRequestWithPlugin:
