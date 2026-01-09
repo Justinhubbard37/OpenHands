@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -22,6 +22,22 @@ class AgentType(Enum):
 
     DEFAULT = 'default'
     PLAN = 'plan'
+
+
+class PluginSpec(BaseModel):
+    """Specification for loading a plugin into a conversation."""
+
+    source: str = Field(
+        description="Plugin source: 'github:owner/repo', git URL, or local path"
+    )
+    ref: str | None = Field(
+        default=None,
+        description='Optional branch, tag, or commit',
+    )
+    parameters: dict[str, Any] | None = Field(
+        default=None,
+        description='User-provided values for plugin input parameters',
+    )
 
 
 class AppConversationInfo(BaseModel):
@@ -117,6 +133,12 @@ class AppConversationStartRequest(OpenHandsModel):
     agent_type: AgentType = Field(default=AgentType.DEFAULT)
 
     public: bool | None = None
+
+    # Plugin parameters - for loading remote plugins into the conversation
+    plugin: PluginSpec | None = Field(
+        default=None,
+        description='Optional plugin to load for this conversation',
+    )
 
 
 class AppConversationUpdateRequest(BaseModel):
