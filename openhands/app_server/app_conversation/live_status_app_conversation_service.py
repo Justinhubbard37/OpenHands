@@ -983,9 +983,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
         params_text = '\n'.join(
             f'- {key}: {value}' for key, value in plugin.parameters.items()
         )
-        plugin_params_message = (
-            f'\n\nPlugin Configuration Parameters:\n{params_text}'
-        )
+        plugin_params_message = f'\n\nPlugin Configuration Parameters:\n{params_text}'
 
         if initial_message is None:
             # Create a new message with just the plugin parameters

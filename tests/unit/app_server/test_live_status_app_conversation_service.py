@@ -1986,7 +1986,9 @@ class TestPluginHandling:
         assert result.plugin_ref == 'v1.0.0'
         # Also verify initial message contains plugin params
         assert result.initial_message is not None
-        assert 'Plugin Configuration Parameters:' in result.initial_message.content[0].text
+        assert (
+            'Plugin Configuration Parameters:' in result.initial_message.content[0].text
+        )
         assert '- api_key: test123' in result.initial_message.content[0].text
 
     @pytest.mark.asyncio
