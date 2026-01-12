@@ -43,20 +43,6 @@ class PluginSpec(BaseModel):
         description='User-provided values for plugin input parameters',
     )
 
-    def get_resolved_source(self) -> str:
-        """Get the plugin source with path appended if specified.
-
-        For marketplace repositories that contain multiple plugins in subdirectories,
-        this returns the source with the subdirectory path appended.
-        """
-        if self.path:
-            # Normalize the source (remove trailing slash if present)
-            base = self.source.rstrip('/')
-            # Normalize the path (remove leading/trailing slashes)
-            subpath = self.path.strip('/')
-            return f'{base}/{subpath}'
-        return self.source
-
 
 class AppConversationInfo(BaseModel):
     """Conversation info which does not contain status."""
