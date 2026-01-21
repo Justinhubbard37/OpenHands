@@ -255,7 +255,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
                     request.conversation_id,
                     remote_workspace=remote_workspace,
                     selected_repository=request.selected_repository,
-                    plugin=request.plugin,
+                    plugins=request.plugins,
                 )
             )
 
@@ -959,7 +959,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
     def _construct_initial_message_with_plugin_params(
         self,
         initial_message: SendMessageRequest | None,
-        plugin: PluginSpec | None,
+        plugins: list[PluginSpec] | None,
     ) -> SendMessageRequest | None:
         """Incorporate plugin parameters into the initial message if specified.
 
@@ -968,7 +968,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
 
         Args:
             initial_message: The original initial message, if any
-            plugin: The plugin specification with optional parameters
+            plugins: List of plugin specifications with optional parameters
 
         Returns:
             The initial message with plugin parameters incorporated, or the
@@ -976,14 +976,37 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
         """
         from openhands.agent_server.models import TextContent
 
-        if not plugin or not plugin.parameters:
+        if not plugins:
             return initial_message
 
-        # Format parameters as a readable list
-        params_text = '\n'.join(
-            f'- {key}: {value}' for key, value in plugin.parameters.items()
-        )
-        plugin_params_message = f'\n\nPlugin Configuration Parameters:\n{params_text}'
+        # Collect all parameters from all plugins
+        all_params: list[tuple[str, str, str, Any]] = []  # (plugin_name, key, value)
+        for plugin in plugins:
+            if plugin.parameters:
+                plugin_name = plugin.source.split('/')[-1] if '/' in plugin.source else plugin.source
+                for key, value in plugin.parameters.items():
+                    all_params.append((plugin_name, key, value))
+
+        if not all_params:
+            return initial_message
+
+        # Format parameters as a readable list, grouped by plugin if multiple
+        if len(plugins) == 1:
+            params_text = '\n'.join(f'- {key}: {value}' for _, key, value in all_params)
+            plugin_params_message = f'\n\nPlugin Configuration Parameters:\n{params_text}'
+        else:
+            # Group by plugin name for clarity
+            params_by_plugin: dict[str, list[str]] = {}
+            for plugin_name, key, value in all_params:
+                if plugin_name not in params_by_plugin:
+                    params_by_plugin[plugin_name] = []
+                params_by_plugin[plugin_name].append(f'  - {key}: {value}')
+            
+            params_text = '\n'.join(
+                f'{name}:\n' + '\n'.join(params)
+                for name, params in params_by_plugin.items()
+            )
+            plugin_params_message = f'\n\nPlugin Configuration Parameters:\n{params_text}'
 
         if initial_message is None:
             # Create a new message with just the plugin parameters
@@ -1024,7 +1047,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
         remote_workspace: AsyncRemoteWorkspace | None,
         selected_repository: str | None,
         working_dir: str,
-        plugin: PluginSpec | None = None,
+        plugins: list[PluginSpec] | None = None,
     ) -> StartConversationRequest:
         """Finalize the conversation request with experiment variants and skills.
 
@@ -1039,11 +1062,13 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
             remote_workspace: Optional remote workspace for skills loading
             selected_repository: Optional repository name
             working_dir: Working directory path
-            plugin: Optional plugin specification to load
+            plugins: Optional list of plugin specifications to load
 
         Returns:
             Complete StartConversationRequest ready for use
         """
+        from openhands.sdk.plugin import PluginSource
+
         # Generate conversation ID if not provided
         conversation_id = conversation_id or uuid4()
 
@@ -1068,8 +1093,20 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
 
         # Incorporate plugin parameters into initial message if specified
         final_initial_message = self._construct_initial_message_with_plugin_params(
-            initial_message, plugin
+            initial_message, plugins
         )
+
+        # Convert PluginSpec list to SDK PluginSource list for agent server
+        sdk_plugins: list[PluginSource] | None = None
+        if plugins:
+            sdk_plugins = [
+                PluginSource(
+                    source=p.source,
+                    ref=p.ref,
+                    repo_path=p.repo_path,
+                )
+                for p in plugins
+            ]
 
         # Create and return the final request
         return StartConversationRequest(
@@ -1081,9 +1118,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
             ),
             initial_message=final_initial_message,
             secrets=secrets,
-            plugin_source=plugin.source if plugin else None,
-            plugin_ref=plugin.ref if plugin else None,
-            plugin_path=plugin.path if plugin else None,
+            plugins=sdk_plugins,
         )
 
     async def _build_start_conversation_request_for_user(
@@ -1098,7 +1133,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
         conversation_id: UUID | None = None,
         remote_workspace: AsyncRemoteWorkspace | None = None,
         selected_repository: str | None = None,
-        plugin: PluginSpec | None = None,
+        plugins: list[PluginSpec] | None = None,
     ) -> StartConversationRequest:
         """Build a complete conversation request for a user.
 
@@ -1107,7 +1142,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
         2. Configuring LLM and MCP settings
         3. Creating an agent with appropriate context
         4. Finalizing the request with skills and experiment variants
-        5. Passing plugin source/ref to the agent server for remote plugin loading
+        5. Passing plugins to the agent server for remote plugin loading
         """
         user = await self.user_context.get_user_info()
         workspace = LocalWorkspace(working_dir=working_dir)
@@ -1140,7 +1175,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
             remote_workspace,
             selected_repository,
             working_dir,
-            plugin=plugin,
+            plugins=plugins,
         )
 
     async def update_agent_server_conversation_title(

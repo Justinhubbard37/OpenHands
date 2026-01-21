@@ -1800,15 +1800,19 @@ class TestPluginHandling:
         self.mock_sandbox.id = uuid4()
         self.mock_sandbox.status = SandboxStatus.RUNNING
 
-    def test_construct_initial_message_with_plugin_params_no_plugin(self):
-        """Test _construct_initial_message_with_plugin_params with no plugin returns original message."""
+    def test_construct_initial_message_with_plugin_params_no_plugins(self):
+        """Test _construct_initial_message_with_plugin_params with no plugins returns original message."""
         from openhands.agent_server.models import SendMessageRequest, TextContent
 
-        # Test with None initial message and None plugin
+        # Test with None initial message and None plugins
         result = self.service._construct_initial_message_with_plugin_params(None, None)
         assert result is None
 
-        # Test with initial message but None plugin
+        # Test with None initial message and empty plugins list
+        result = self.service._construct_initial_message_with_plugin_params(None, [])
+        assert result is None
+
+        # Test with initial message but None plugins
         initial_msg = SendMessageRequest(content=[TextContent(text='Hello world')])
         result = self.service._construct_initial_message_with_plugin_params(
             initial_msg, None
@@ -1816,25 +1820,25 @@ class TestPluginHandling:
         assert result is initial_msg
 
     def test_construct_initial_message_with_plugin_params_no_params(self):
-        """Test _construct_initial_message_with_plugin_params with plugin but no parameters."""
+        """Test _construct_initial_message_with_plugin_params with plugins but no parameters."""
         from openhands.agent_server.models import SendMessageRequest, TextContent
         from openhands.app_server.app_conversation.app_conversation_models import (
             PluginSpec,
         )
 
         # Plugin with no parameters
-        plugin = PluginSpec(source='github:owner/repo')
+        plugins = [PluginSpec(source='github:owner/repo')]
 
         # Test with None initial message
         result = self.service._construct_initial_message_with_plugin_params(
-            None, plugin
+            None, plugins
         )
         assert result is None
 
         # Test with initial message
         initial_msg = SendMessageRequest(content=[TextContent(text='Hello world')])
         result = self.service._construct_initial_message_with_plugin_params(
-            initial_msg, plugin
+            initial_msg, plugins
         )
         assert result is initial_msg
 
@@ -1845,13 +1849,13 @@ class TestPluginHandling:
             PluginSpec,
         )
 
-        plugin = PluginSpec(
+        plugins = [PluginSpec(
             source='github:owner/repo',
             parameters={'api_key': 'test123', 'debug': True},
-        )
+        )]
 
         result = self.service._construct_initial_message_with_plugin_params(
-            None, plugin
+            None, plugins
         )
 
         assert result is not None
@@ -1873,14 +1877,14 @@ class TestPluginHandling:
             content=[TextContent(text='Please analyze this codebase')],
             run=False,
         )
-        plugin = PluginSpec(
+        plugins = [PluginSpec(
             source='github:owner/repo',
             ref='v1.0.0',
             parameters={'target_dir': '/src', 'verbose': True},
-        )
+        )]
 
         result = self.service._construct_initial_message_with_plugin_params(
-            initial_msg, plugin
+            initial_msg, plugins
         )
 
         assert result is not None
@@ -1903,10 +1907,10 @@ class TestPluginHandling:
             role='system',
             content=[TextContent(text='System message')],
         )
-        plugin = PluginSpec(source='github:owner/repo', parameters={'key': 'value'})
+        plugins = [PluginSpec(source='github:owner/repo', parameters={'key': 'value'})]
 
         result = self.service._construct_initial_message_with_plugin_params(
-            initial_msg, plugin
+            initial_msg, plugins
         )
 
         assert result is not None
@@ -1920,10 +1924,10 @@ class TestPluginHandling:
         )
 
         initial_msg = SendMessageRequest(content=[])
-        plugin = PluginSpec(source='github:owner/repo', parameters={'key': 'value'})
+        plugins = [PluginSpec(source='github:owner/repo', parameters={'key': 'value'})]
 
         result = self.service._construct_initial_message_with_plugin_params(
-            initial_msg, plugin
+            initial_msg, plugins
         )
 
         assert result is not None
@@ -1931,14 +1935,47 @@ class TestPluginHandling:
         assert isinstance(result.content[0], TextContent)
         assert 'Plugin Configuration Parameters:' in result.content[0].text
 
+    def test_construct_initial_message_with_multiple_plugins(self):
+        """Test _construct_initial_message_with_plugin_params handles multiple plugins."""
+        from openhands.agent_server.models import TextContent
+        from openhands.app_server.app_conversation.app_conversation_models import (
+            PluginSpec,
+        )
+
+        plugins = [
+            PluginSpec(
+                source='github:owner/plugin1',
+                parameters={'key1': 'value1'},
+            ),
+            PluginSpec(
+                source='github:owner/plugin2',
+                parameters={'key2': 'value2'},
+            ),
+        ]
+
+        result = self.service._construct_initial_message_with_plugin_params(
+            None, plugins
+        )
+
+        assert result is not None
+        assert len(result.content) == 1
+        assert isinstance(result.content[0], TextContent)
+        text = result.content[0].text
+        assert 'Plugin Configuration Parameters:' in text
+        # Multiple plugins should show grouped by plugin name
+        assert 'plugin1' in text
+        assert 'plugin2' in text
+        assert 'key1: value1' in text
+        assert 'key2: value2' in text
+
     @pytest.mark.asyncio
     @patch(
         'openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl'
     )
-    async def test_finalize_conversation_request_with_plugin(
+    async def test_finalize_conversation_request_with_plugins(
         self, mock_experiment_manager
     ):
-        """Test _finalize_conversation_request passes plugin_source and plugin_ref to StartConversationRequest."""
+        """Test _finalize_conversation_request passes plugins list to StartConversationRequest."""
         from openhands.app_server.app_conversation.app_conversation_models import (
             PluginSpec,
         )
@@ -1959,11 +1996,11 @@ class TestPluginHandling:
         workspace = LocalWorkspace(working_dir='/test')
         secrets = {'test': StaticSecret(value='secret')}
 
-        plugin = PluginSpec(
+        plugins = [PluginSpec(
             source='github:owner/my-plugin',
             ref='v1.0.0',
             parameters={'api_key': 'test123'},
-        )
+        )]
 
         # Act
         result = await self.service._finalize_conversation_request(
@@ -1977,13 +2014,15 @@ class TestPluginHandling:
             None,
             None,
             '/test/dir',
-            plugin=plugin,
+            plugins=plugins,
         )
 
         # Assert
         assert isinstance(result, StartConversationRequest)
-        assert result.plugin_source == 'github:owner/my-plugin'
-        assert result.plugin_ref == 'v1.0.0'
+        assert result.plugins is not None
+        assert len(result.plugins) == 1
+        assert result.plugins[0].source == 'github:owner/my-plugin'
+        assert result.plugins[0].ref == 'v1.0.0'
         # Also verify initial message contains plugin params
         assert result.initial_message is not None
         assert (
@@ -1995,10 +2034,10 @@ class TestPluginHandling:
     @patch(
         'openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl'
     )
-    async def test_finalize_conversation_request_without_plugin(
+    async def test_finalize_conversation_request_without_plugins(
         self, mock_experiment_manager
     ):
-        """Test _finalize_conversation_request without plugin sets plugin fields to None."""
+        """Test _finalize_conversation_request without plugins sets plugins to None."""
         # Arrange
         mock_agent = Mock(spec=Agent)
         mock_llm = Mock(spec=LLM)
@@ -2027,13 +2066,12 @@ class TestPluginHandling:
             None,
             None,
             '/test/dir',
-            plugin=None,
+            plugins=None,
         )
 
         # Assert
         assert isinstance(result, StartConversationRequest)
-        assert result.plugin_source is None
-        assert result.plugin_ref is None
+        assert result.plugins is None
 
     @pytest.mark.asyncio
     @patch(
@@ -2064,7 +2102,7 @@ class TestPluginHandling:
         secrets = {}
 
         # Plugin without ref or parameters
-        plugin = PluginSpec(source='github:owner/my-plugin')
+        plugins = [PluginSpec(source='github:owner/my-plugin')]
 
         # Act
         result = await self.service._finalize_conversation_request(
@@ -2078,27 +2116,26 @@ class TestPluginHandling:
             None,
             None,
             '/test/dir',
-            plugin=plugin,
+            plugins=plugins,
         )
 
         # Assert
         assert isinstance(result, StartConversationRequest)
-        assert result.plugin_source == 'github:owner/my-plugin'
-        assert result.plugin_ref is None
+        assert result.plugins is not None
+        assert len(result.plugins) == 1
+        assert result.plugins[0].source == 'github:owner/my-plugin'
+        assert result.plugins[0].ref is None
         # No parameters, so initial message should be None
         assert result.initial_message is None
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(
-        reason='Requires SDK PRs #1647 and #1651 which add plugin_path to StartConversationRequest'
-    )
     @patch(
         'openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl'
     )
-    async def test_finalize_conversation_request_plugin_with_path(
+    async def test_finalize_conversation_request_plugin_with_repo_path(
         self, mock_experiment_manager
     ):
-        """Test _finalize_conversation_request passes plugin_path separately."""
+        """Test _finalize_conversation_request passes repo_path to PluginSource."""
         from openhands.app_server.app_conversation.app_conversation_models import (
             PluginSpec,
         )
@@ -2119,12 +2156,12 @@ class TestPluginHandling:
         workspace = LocalWorkspace(working_dir='/test')
         secrets = {}
 
-        # Plugin with path (for marketplace repos containing multiple plugins)
-        plugin = PluginSpec(
+        # Plugin with repo_path (for marketplace repos containing multiple plugins)
+        plugins = [PluginSpec(
             source='github:owner/marketplace-repo',
             ref='main',
-            path='plugins/city-weather',
-        )
+            repo_path='plugins/city-weather',
+        )]
 
         # Act
         result = await self.service._finalize_conversation_request(
@@ -2138,20 +2175,83 @@ class TestPluginHandling:
             None,
             None,
             '/test/dir',
-            plugin=plugin,
+            plugins=plugins,
         )
 
         # Assert
         assert isinstance(result, StartConversationRequest)
-        # plugin_source should be the source only (without path appended)
-        assert result.plugin_source == 'github:owner/marketplace-repo'
-        assert result.plugin_ref == 'main'
-        # plugin_path should be passed separately
-        assert result.plugin_path == 'plugins/city-weather'
+        assert result.plugins is not None
+        assert len(result.plugins) == 1
+        assert result.plugins[0].source == 'github:owner/marketplace-repo'
+        assert result.plugins[0].ref == 'main'
+        assert result.plugins[0].repo_path == 'plugins/city-weather'
 
     @pytest.mark.asyncio
-    async def test_build_start_conversation_request_for_user_with_plugin(self):
-        """Test _build_start_conversation_request_for_user passes plugin to finalize method."""
+    @patch(
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl'
+    )
+    async def test_finalize_conversation_request_multiple_plugins(
+        self, mock_experiment_manager
+    ):
+        """Test _finalize_conversation_request with multiple plugins."""
+        from openhands.app_server.app_conversation.app_conversation_models import (
+            PluginSpec,
+        )
+
+        # Arrange
+        mock_agent = Mock(spec=Agent)
+        mock_llm = Mock(spec=LLM)
+        mock_llm.model = 'gpt-4'
+        mock_llm.usage_id = 'agent'
+
+        mock_updated_agent = Mock(spec=Agent)
+        mock_updated_agent.llm = mock_llm
+        mock_updated_agent.condenser = None
+        mock_experiment_manager.run_agent_variant_tests__v1.return_value = (
+            mock_updated_agent
+        )
+
+        workspace = LocalWorkspace(working_dir='/test')
+        secrets = {}
+
+        # Multiple plugins
+        plugins = [
+            PluginSpec(source='github:owner/security-plugin', ref='v2.0.0'),
+            PluginSpec(
+                source='github:owner/monorepo',
+                repo_path='plugins/logging',
+            ),
+            PluginSpec(source='/local/path/to/plugin'),
+        ]
+
+        # Act
+        result = await self.service._finalize_conversation_request(
+            mock_agent,
+            None,
+            self.mock_user,
+            workspace,
+            None,
+            secrets,
+            self.mock_sandbox,
+            None,
+            None,
+            '/test/dir',
+            plugins=plugins,
+        )
+
+        # Assert
+        assert isinstance(result, StartConversationRequest)
+        assert result.plugins is not None
+        assert len(result.plugins) == 3
+        assert result.plugins[0].source == 'github:owner/security-plugin'
+        assert result.plugins[0].ref == 'v2.0.0'
+        assert result.plugins[1].source == 'github:owner/monorepo'
+        assert result.plugins[1].repo_path == 'plugins/logging'
+        assert result.plugins[2].source == '/local/path/to/plugin'
+
+    @pytest.mark.asyncio
+    async def test_build_start_conversation_request_for_user_with_plugins(self):
+        """Test _build_start_conversation_request_for_user passes plugins to finalize method."""
         from openhands.app_server.app_conversation.app_conversation_models import (
             PluginSpec,
         )
@@ -2162,11 +2262,11 @@ class TestPluginHandling:
         self.mock_user_context.get_provider_tokens = AsyncMock(return_value=None)
         self.mock_user_context.get_mcp_api_key.return_value = None
 
-        plugin = PluginSpec(
+        plugins = [PluginSpec(
             source='https://github.com/org/plugin.git',
             ref='main',
             parameters={'config_file': 'custom.yaml'},
-        )
+        )]
 
         # Mock _finalize_conversation_request to capture the call
         mock_finalize = AsyncMock(return_value=Mock(spec=StartConversationRequest))
@@ -2179,17 +2279,17 @@ class TestPluginHandling:
             None,
             None,
             '/workspace',
-            plugin=plugin,
+            plugins=plugins,
         )
 
         # Assert
         mock_finalize.assert_called_once()
         call_kwargs = mock_finalize.call_args.kwargs
-        assert call_kwargs['plugin'] == plugin
+        assert call_kwargs['plugins'] == plugins
 
     @pytest.mark.asyncio
-    async def test_build_start_conversation_request_for_user_without_plugin(self):
-        """Test _build_start_conversation_request_for_user works without plugin."""
+    async def test_build_start_conversation_request_for_user_without_plugins(self):
+        """Test _build_start_conversation_request_for_user works without plugins."""
         # Arrange
         self.mock_user_context.get_user_info.return_value = self.mock_user
         self.mock_user_context.get_secrets.return_value = {}
@@ -2212,7 +2312,7 @@ class TestPluginHandling:
         # Assert
         mock_finalize.assert_called_once()
         call_kwargs = mock_finalize.call_args.kwargs
-        assert call_kwargs.get('plugin') is None
+        assert call_kwargs.get('plugins') is None
 
 
 class TestPluginSpecModel:
@@ -2227,13 +2327,13 @@ class TestPluginSpecModel:
         plugin = PluginSpec(
             source='github:owner/repo',
             ref='v1.0.0',
-            path='plugins/my-plugin',
+            repo_path='plugins/my-plugin',
             parameters={'key1': 'value1', 'key2': 123, 'key3': True},
         )
 
         assert plugin.source == 'github:owner/repo'
         assert plugin.ref == 'v1.0.0'
-        assert plugin.path == 'plugins/my-plugin'
+        assert plugin.repo_path == 'plugins/my-plugin'
         assert plugin.parameters == {'key1': 'value1', 'key2': 123, 'key3': True}
 
     def test_plugin_spec_with_only_source(self):
@@ -2246,7 +2346,7 @@ class TestPluginSpecModel:
 
         assert plugin.source == 'https://github.com/owner/repo.git'
         assert plugin.ref is None
-        assert plugin.path is None
+        assert plugin.repo_path is None
         assert plugin.parameters is None
 
     def test_plugin_spec_serialization(self):
@@ -2258,7 +2358,7 @@ class TestPluginSpecModel:
         plugin = PluginSpec(
             source='github:owner/repo',
             ref='main',
-            path='plugins/my-plugin',
+            repo_path='plugins/my-plugin',
             parameters={'debug': True},
         )
 
@@ -2266,7 +2366,7 @@ class TestPluginSpecModel:
         assert json_data == {
             'source': 'github:owner/repo',
             'ref': 'main',
-            'path': 'plugins/my-plugin',
+            'repo_path': 'plugins/my-plugin',
             'parameters': {'debug': True},
         }
 
@@ -2279,7 +2379,7 @@ class TestPluginSpecModel:
         data = {
             'source': 'github:owner/repo',
             'ref': 'v2.0.0',
-            'path': 'plugins/weather',
+            'repo_path': 'plugins/weather',
             'parameters': {'timeout': 30},
         }
 
@@ -2287,38 +2387,39 @@ class TestPluginSpecModel:
 
         assert plugin.source == 'github:owner/repo'
         assert plugin.ref == 'v2.0.0'
-        assert plugin.path == 'plugins/weather'
+        assert plugin.repo_path == 'plugins/weather'
         assert plugin.parameters == {'timeout': 30}
 
 
-class TestAppConversationStartRequestWithPlugin:
-    """Test cases for AppConversationStartRequest with plugin field."""
+class TestAppConversationStartRequestWithPlugins:
+    """Test cases for AppConversationStartRequest with plugins field."""
 
-    def test_start_request_with_plugin(self):
-        """Test AppConversationStartRequest with plugin field."""
+    def test_start_request_with_plugins(self):
+        """Test AppConversationStartRequest with plugins field."""
         from openhands.app_server.app_conversation.app_conversation_models import (
             AppConversationStartRequest,
             PluginSpec,
         )
 
-        plugin = PluginSpec(
+        plugins = [PluginSpec(
             source='github:owner/my-plugin',
             ref='v1.0.0',
             parameters={'api_key': 'test'},
-        )
+        )]
 
         request = AppConversationStartRequest(
             title='Test conversation',
-            plugin=plugin,
+            plugins=plugins,
         )
 
-        assert request.plugin is not None
-        assert request.plugin.source == 'github:owner/my-plugin'
-        assert request.plugin.ref == 'v1.0.0'
-        assert request.plugin.parameters == {'api_key': 'test'}
+        assert request.plugins is not None
+        assert len(request.plugins) == 1
+        assert request.plugins[0].source == 'github:owner/my-plugin'
+        assert request.plugins[0].ref == 'v1.0.0'
+        assert request.plugins[0].parameters == {'api_key': 'test'}
 
-    def test_start_request_without_plugin(self):
-        """Test AppConversationStartRequest without plugin field (backwards compatible)."""
+    def test_start_request_without_plugins(self):
+        """Test AppConversationStartRequest without plugins field (backwards compatible)."""
         from openhands.app_server.app_conversation.app_conversation_models import (
             AppConversationStartRequest,
         )
@@ -2327,41 +2428,69 @@ class TestAppConversationStartRequestWithPlugin:
             title='Test conversation',
         )
 
-        assert request.plugin is None
+        assert request.plugins is None
 
-    def test_start_request_serialization_with_plugin(self):
-        """Test AppConversationStartRequest serialization includes plugin."""
+    def test_start_request_serialization_with_plugins(self):
+        """Test AppConversationStartRequest serialization includes plugins."""
         from openhands.app_server.app_conversation.app_conversation_models import (
             AppConversationStartRequest,
             PluginSpec,
         )
 
-        plugin = PluginSpec(source='github:owner/repo')
-        request = AppConversationStartRequest(plugin=plugin)
+        plugins = [PluginSpec(source='github:owner/repo')]
+        request = AppConversationStartRequest(plugins=plugins)
 
         json_data = request.model_dump()
 
-        assert 'plugin' in json_data
-        assert json_data['plugin']['source'] == 'github:owner/repo'
+        assert 'plugins' in json_data
+        assert len(json_data['plugins']) == 1
+        assert json_data['plugins'][0]['source'] == 'github:owner/repo'
 
-    def test_start_request_deserialization_with_plugin(self):
-        """Test AppConversationStartRequest deserialization from JSON with plugin."""
+    def test_start_request_deserialization_with_plugins(self):
+        """Test AppConversationStartRequest deserialization from JSON with plugins."""
         from openhands.app_server.app_conversation.app_conversation_models import (
             AppConversationStartRequest,
         )
 
         data = {
             'title': 'Test',
-            'plugin': {
-                'source': 'github:owner/plugin',
-                'ref': 'main',
-                'parameters': {'key': 'value'},
-            },
+            'plugins': [
+                {
+                    'source': 'github:owner/plugin',
+                    'ref': 'main',
+                    'parameters': {'key': 'value'},
+                },
+            ],
         }
 
         request = AppConversationStartRequest.model_validate(data)
 
-        assert request.plugin is not None
-        assert request.plugin.source == 'github:owner/plugin'
-        assert request.plugin.ref == 'main'
-        assert request.plugin.parameters == {'key': 'value'}
+        assert request.plugins is not None
+        assert len(request.plugins) == 1
+        assert request.plugins[0].source == 'github:owner/plugin'
+        assert request.plugins[0].ref == 'main'
+        assert request.plugins[0].parameters == {'key': 'value'}
+
+    def test_start_request_with_multiple_plugins(self):
+        """Test AppConversationStartRequest with multiple plugins."""
+        from openhands.app_server.app_conversation.app_conversation_models import (
+            AppConversationStartRequest,
+            PluginSpec,
+        )
+
+        plugins = [
+            PluginSpec(source='github:owner/plugin1', ref='v1.0.0'),
+            PluginSpec(source='github:owner/plugin2', repo_path='plugins/sub'),
+            PluginSpec(source='/local/path'),
+        ]
+
+        request = AppConversationStartRequest(
+            title='Test conversation',
+            plugins=plugins,
+        )
+
+        assert request.plugins is not None
+        assert len(request.plugins) == 3
+        assert request.plugins[0].source == 'github:owner/plugin1'
+        assert request.plugins[1].repo_path == 'plugins/sub'
+        assert request.plugins[2].source == '/local/path'

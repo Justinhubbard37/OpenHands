@@ -25,18 +25,26 @@ class AgentType(Enum):
 
 
 class PluginSpec(BaseModel):
-    """Specification for loading a plugin into a conversation."""
+    """Specification for loading a plugin into a conversation.
+
+    This model mirrors the SDK's PluginSource with an additional 'parameters' field
+    for user-provided plugin configuration values.
+    """
 
     source: str = Field(
-        description="Plugin source: 'github:owner/repo', git URL, or local path"
+        description="Plugin source: 'github:owner/repo', any git URL, or local path"
     )
     ref: str | None = Field(
         default=None,
-        description='Optional branch, tag, or commit',
+        description='Optional branch, tag, or commit (only for git sources)',
     )
-    path: str | None = Field(
+    repo_path: str | None = Field(
         default=None,
-        description='Optional subdirectory path within the repository where the plugin is located (e.g., "plugins/my-plugin")',
+        description=(
+            'Subdirectory path within the git repository '
+            "(e.g., 'plugins/my-plugin' for monorepos). "
+            'Only relevant for git sources, not local paths.'
+        ),
     )
     parameters: dict[str, Any] | None = Field(
         default=None,
@@ -139,9 +147,12 @@ class AppConversationStartRequest(OpenHandsModel):
     public: bool | None = None
 
     # Plugin parameters - for loading remote plugins into the conversation
-    plugin: PluginSpec | None = Field(
+    plugins: list[PluginSpec] | None = Field(
         default=None,
-        description='Optional plugin to load for this conversation',
+        description=(
+            'List of plugins to load for this conversation. Plugins are loaded '
+            'and their skills/MCP config are merged into the agent.'
+        ),
     )
 
 
