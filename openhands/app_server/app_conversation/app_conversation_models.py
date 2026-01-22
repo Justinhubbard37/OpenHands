@@ -20,8 +20,8 @@ from openhands.storage.data_models.conversation_metadata import ConversationTrig
 class AgentType(Enum):
     """Agent type for conversation."""
 
-    DEFAULT = 'default'
-    PLAN = 'plan'
+    DEFAULT = "default"
+    PLAN = "plan"
 
 
 class PluginSpec(BaseModel):
@@ -36,19 +36,19 @@ class PluginSpec(BaseModel):
     )
     ref: str | None = Field(
         default=None,
-        description='Optional branch, tag, or commit (only for git sources)',
+        description="Optional branch, tag, or commit (only for git sources)",
     )
     repo_path: str | None = Field(
         default=None,
         description=(
-            'Subdirectory path within the git repository '
+            "Subdirectory path within the git repository "
             "(e.g., 'plugins/my-plugin' for monorepos). "
-            'Only relevant for git sources, not local paths.'
+            "Only relevant for git sources, not local paths."
         ),
     )
     parameters: dict[str, Any] | None = Field(
         default=None,
-        description='User-provided values for plugin input parameters',
+        description="User-provided values for plugin input parameters",
     )
 
 
@@ -80,12 +80,12 @@ class AppConversationInfo(BaseModel):
 
 
 class AppConversationSortOrder(Enum):
-    CREATED_AT = 'CREATED_AT'
-    CREATED_AT_DESC = 'CREATED_AT_DESC'
-    UPDATED_AT = 'UPDATED_AT'
-    UPDATED_AT_DESC = 'UPDATED_AT_DESC'
-    TITLE = 'TITLE'
-    TITLE_DESC = 'TITLE_DESC'
+    CREATED_AT = "CREATED_AT"
+    CREATED_AT_DESC = "CREATED_AT_DESC"
+    UPDATED_AT = "UPDATED_AT"
+    UPDATED_AT_DESC = "UPDATED_AT_DESC"
+    TITLE = "TITLE"
+    TITLE_DESC = "TITLE_DESC"
 
 
 class AppConversationInfoPage(BaseModel):
@@ -96,17 +96,17 @@ class AppConversationInfoPage(BaseModel):
 class AppConversation(AppConversationInfo):  # type: ignore
     sandbox_status: SandboxStatus = Field(
         default=SandboxStatus.MISSING,
-        description='Current sandbox status. Will be MISSING if the sandbox does not exist.',
+        description="Current sandbox status. Will be MISSING if the sandbox does not exist.",
     )
     execution_status: ConversationExecutionStatus | None = Field(
         default=None,
-        description='Current agent status. Will be None if the sandbox_status is not RUNNING',
+        description="Current agent status. Will be None if the sandbox_status is not RUNNING",
     )
     conversation_url: str | None = Field(
-        default=None, description='The URL where the conversation may be accessed'
+        default=None, description="The URL where the conversation may be accessed"
     )
     session_api_key: str | None = Field(
-        default=None, description='The Session Api Key for REST operations.'
+        default=None, description="The Session Api Key for REST operations."
     )
 
     # JSON fields for complex data types
@@ -150,8 +150,8 @@ class AppConversationStartRequest(OpenHandsModel):
     plugins: list[PluginSpec] | None = Field(
         default=None,
         description=(
-            'List of plugins to load for this conversation. Plugins are loaded '
-            'and their skills/MCP config are merged into the agent.'
+            "List of plugins to load for this conversation. Plugins are loaded "
+            "and their skills/MCP config are merged into the agent."
         ),
     )
 
@@ -161,22 +161,22 @@ class AppConversationUpdateRequest(BaseModel):
 
 
 class AppConversationStartTaskStatus(Enum):
-    WORKING = 'WORKING'
-    WAITING_FOR_SANDBOX = 'WAITING_FOR_SANDBOX'
-    PREPARING_REPOSITORY = 'PREPARING_REPOSITORY'
-    RUNNING_SETUP_SCRIPT = 'RUNNING_SETUP_SCRIPT'
-    SETTING_UP_GIT_HOOKS = 'SETTING_UP_GIT_HOOKS'
-    SETTING_UP_SKILLS = 'SETTING_UP_SKILLS'
-    STARTING_CONVERSATION = 'STARTING_CONVERSATION'
-    READY = 'READY'
-    ERROR = 'ERROR'
+    WORKING = "WORKING"
+    WAITING_FOR_SANDBOX = "WAITING_FOR_SANDBOX"
+    PREPARING_REPOSITORY = "PREPARING_REPOSITORY"
+    RUNNING_SETUP_SCRIPT = "RUNNING_SETUP_SCRIPT"
+    SETTING_UP_GIT_HOOKS = "SETTING_UP_GIT_HOOKS"
+    SETTING_UP_SKILLS = "SETTING_UP_SKILLS"
+    STARTING_CONVERSATION = "STARTING_CONVERSATION"
+    READY = "READY"
+    ERROR = "ERROR"
 
 
 class AppConversationStartTaskSortOrder(Enum):
-    CREATED_AT = 'CREATED_AT'
-    CREATED_AT_DESC = 'CREATED_AT_DESC'
-    UPDATED_AT = 'UPDATED_AT'
-    UPDATED_AT_DESC = 'UPDATED_AT_DESC'
+    CREATED_AT = "CREATED_AT"
+    CREATED_AT_DESC = "CREATED_AT_DESC"
+    UPDATED_AT = "UPDATED_AT"
+    UPDATED_AT_DESC = "UPDATED_AT_DESC"
 
 
 class AppConversationStartTask(OpenHandsModel):
@@ -184,20 +184,21 @@ class AppConversationStartTask(OpenHandsModel):
 
     Because starting an app conversation can be slow (And can involve starting a sandbox),
     we kick off a background task for it. Once the conversation is started, the app_conversation_id
-    is populated."""
+    is populated.
+    """
 
     id: OpenHandsUUID = Field(default_factory=uuid4)
     created_by_user_id: str | None
     status: AppConversationStartTaskStatus = AppConversationStartTaskStatus.WORKING
     detail: str | None = None
     app_conversation_id: OpenHandsUUID | None = Field(
-        default=None, description='The id of the app_conversation, if READY'
+        default=None, description="The id of the app_conversation, if READY"
     )
     sandbox_id: str | None = Field(
-        default=None, description='The id of the sandbox, if READY'
+        default=None, description="The id of the sandbox, if READY"
     )
     agent_server_url: str | None = Field(
-        default=None, description='The agent server url, if READY'
+        default=None, description="The agent server url, if READY"
     )
     request: AppConversationStartRequest
     created_at: datetime = Field(default_factory=utc_now)
@@ -213,6 +214,6 @@ class SkillResponse(BaseModel):
     """Response model for skills endpoint."""
 
     name: str
-    type: Literal['repo', 'knowledge', 'agentskills']
+    type: Literal["repo", "knowledge", "agentskills"]
     content: str
     triggers: list[str] = []
