@@ -85,7 +85,7 @@ class AppConversationService(ABC):
 
         dummy_request = AppConversationStartRequest()
         yield AppConversationStartTask(
-            created_by_user_id="dummy",
+            created_by_user_id='dummy',
             request=dummy_request,
         )
 

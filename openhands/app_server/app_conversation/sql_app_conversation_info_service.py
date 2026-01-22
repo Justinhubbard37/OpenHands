@@ -65,7 +65,7 @@ logger = logging.getLogger(__name__)
 
 
 class StoredConversationMetadata(Base):  # type: ignore
-    __tablename__ = "conversation_metadata"
+    __tablename__ = 'conversation_metadata'
     conversation_id = Column(
         String, primary_key=True, default=lambda: str(uuid.uuid4())
     )
@@ -96,7 +96,7 @@ class StoredConversationMetadata(Base):  # type: ignore
     # LLM model used for the conversation
     llm_model = Column(String, nullable=True)
 
-    conversation_version = Column(String, nullable=False, default="V0", index=True)
+    conversation_version = Column(String, nullable=False, default='V0', index=True)
     sandbox_id = Column(String, nullable=True, index=True)
     parent_conversation_id = Column(String, nullable=True, index=True)
     public = Column(Boolean, nullable=True, index=True)
@@ -198,7 +198,7 @@ class SQLAppConversationInfoService(AppConversationInfoService):
     ) -> int:
         """Count sandboxed conversations matching the given filters."""
         query = select(func.count(StoredConversationMetadata.conversation_id)).where(
-            StoredConversationMetadata.conversation_version == "V1"
+            StoredConversationMetadata.conversation_version == 'V1'
         )
 
         query = self._apply_filters(
@@ -227,7 +227,7 @@ class SQLAppConversationInfoService(AppConversationInfoService):
         conditions = []
         if title__contains is not None:
             conditions.append(
-                StoredConversationMetadata.title.like(f"%{title__contains}%")
+                StoredConversationMetadata.title.like(f'%{title__contains}%')
             )
 
         if created_at__gte is not None:
@@ -340,7 +340,7 @@ class SQLAppConversationInfoService(AppConversationInfoService):
             context_window=usage.context_window,
             per_turn_token=usage.per_turn_token,
             llm_model=info.llm_model,
-            conversation_version="V1",
+            conversation_version='V1',
             sandbox_id=info.sandbox_id,
             parent_conversation_id=(
                 str(info.parent_conversation_id)
@@ -365,11 +365,11 @@ class SQLAppConversationInfoService(AppConversationInfoService):
         """
         # Extract agent metrics from usage_to_metrics
         usage_to_metrics = stats.usage_to_metrics
-        agent_metrics = usage_to_metrics.get("agent")
+        agent_metrics = usage_to_metrics.get('agent')
 
         if not agent_metrics:
             logger.debug(
-                "No agent metrics found in stats for conversation %s", conversation_id
+                'No agent metrics found in stats for conversation %s', conversation_id
             )
             return
 
@@ -383,7 +383,7 @@ class SQLAppConversationInfoService(AppConversationInfoService):
 
         if not stored:
             logger.debug(
-                "Conversation %s not found or not accessible, skipping statistics update",
+                'Conversation %s not found or not accessible, skipping statistics update',
                 conversation_id,
             )
             return
@@ -460,10 +460,10 @@ class SQLAppConversationInfoService(AppConversationInfoService):
                 # Parse dict into ConversationStats model
                 # This validates the structure and ensures type safety
                 conversation_stats = ConversationStats.model_validate(event_value)
-            elif hasattr(event_value, "usage_to_metrics"):
+            elif hasattr(event_value, 'usage_to_metrics'):
                 # Handle objects with usage_to_metrics attribute (e.g., from tests)
                 # Convert to dict first, then validate
-                stats_dict = {"usage_to_metrics": event_value.usage_to_metrics}
+                stats_dict = {'usage_to_metrics': event_value.usage_to_metrics}
                 conversation_stats = ConversationStats.model_validate(stats_dict)
 
             if conversation_stats and conversation_stats.usage_to_metrics:
@@ -473,14 +473,14 @@ class SQLAppConversationInfoService(AppConversationInfoService):
                 )
         except Exception:
             logger.exception(
-                "Error updating conversation statistics for conversation %s",
+                'Error updating conversation statistics for conversation %s',
                 conversation_id,
                 stack_info=True,
             )
 
     async def _secure_select(self):
         query = select(StoredConversationMetadata).where(
-            StoredConversationMetadata.conversation_version == "V1"
+            StoredConversationMetadata.conversation_version == 'V1'
         )
         return query
 

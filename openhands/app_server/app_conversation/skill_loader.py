@@ -130,14 +130,14 @@ async def _get_provider_type(
     """
     is_gitlab = await _is_gitlab_repository(selected_repository, user_context)
     if is_gitlab:
-        return "gitlab"
+        return 'gitlab'
 
     is_azure = await _is_azure_devops_repository(selected_repository, user_context)
     if is_azure:
-        return "azure"
+        return 'azure'
 
     # Default to github (covers github and bitbucket)
-    return "github"
+    return 'github'
 
 
 async def _determine_org_repo_path(
@@ -159,7 +159,7 @@ async def _determine_org_repo_path(
         - GitLab: ('owner/openhands-config', 'owner')
         - Azure DevOps: ('org/openhands-config/openhands-config', 'org')
     """
-    repo_parts = selected_repository.split("/")
+    repo_parts = selected_repository.split('/')
 
     is_azure_devops = await _is_azure_devops_repository(
         selected_repository, user_context
@@ -172,11 +172,11 @@ async def _determine_org_repo_path(
         org_name = repo_parts[-2]
 
     if is_gitlab:
-        org_openhands_repo = f"{org_name}/openhands-config"
+        org_openhands_repo = f'{org_name}/openhands-config'
     elif is_azure_devops:
-        org_openhands_repo = f"{org_name}/openhands-config/openhands-config"
+        org_openhands_repo = f'{org_name}/openhands-config/openhands-config'
     else:
-        org_openhands_repo = f"{org_name}/.openhands"
+        org_openhands_repo = f'{org_name}/.openhands'
 
     return org_openhands_repo, org_name
 
@@ -200,12 +200,12 @@ async def _get_org_repository_url(
         return remote_url
     except AuthenticationError as e:
         _logger.debug(
-            f"org-level skill directory {org_openhands_repo} not found: {str(e)}"
+            f'org-level skill directory {org_openhands_repo} not found: {str(e)}'
         )
         return None
     except Exception as e:
         _logger.debug(
-            f"Failed to get authenticated URL for {org_openhands_repo}: {str(e)}"
+            f'Failed to get authenticated URL for {org_openhands_repo}: {str(e)}'
         )
         return None
 
@@ -226,11 +226,11 @@ async def build_org_config(
     if not selected_repository:
         return None
 
-    repo_parts = selected_repository.split("/")
+    repo_parts = selected_repository.split('/')
     if len(repo_parts) < 2:
         _logger.warning(
-            f"Repository path has insufficient parts ({len(repo_parts)} < 2), "
-            f"skipping org-level skills"
+            f'Repository path has insufficient parts ({len(repo_parts)} < 2), '
+            f'skipping org-level skills'
         )
         return None
 
@@ -253,7 +253,7 @@ async def build_org_config(
         )
 
     except Exception as e:
-        _logger.debug(f"Failed to build org config: {str(e)}")
+        _logger.debug(f'Failed to build org config: {str(e)}')
         return None
 
 
@@ -311,24 +311,24 @@ async def load_skills_from_agent_server(
     try:
         # Build request payload
         payload = {
-            "load_public": load_public,
-            "load_user": load_user,
-            "load_project": load_project,
-            "load_org": load_org,
-            "project_dir": project_dir,
-            "org_config": org_config.model_dump() if org_config else None,
-            "sandbox_config": sandbox_config.model_dump() if sandbox_config else None,
+            'load_public': load_public,
+            'load_user': load_user,
+            'load_project': load_project,
+            'load_org': load_org,
+            'project_dir': project_dir,
+            'org_config': org_config.model_dump() if org_config else None,
+            'sandbox_config': sandbox_config.model_dump() if sandbox_config else None,
         }
 
         # Build headers
-        headers = {"Content-Type": "application/json"}
+        headers = {'Content-Type': 'application/json'}
         if session_api_key:
-            headers["X-Session-API-Key"] = session_api_key
+            headers['X-Session-API-Key'] = session_api_key
 
         # Make API request
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{agent_server_url}/api/skills",
+                f'{agent_server_url}/api/skills',
                 json=payload,
                 headers=headers,
                 timeout=60.0,
@@ -339,38 +339,38 @@ async def load_skills_from_agent_server(
 
         # Convert response to Skill objects
         skills: list[Skill] = []
-        for skill_data_dict in data.get("skills", []):
+        for skill_data_dict in data.get('skills', []):
             try:
                 skill_info = SkillInfo.model_validate(skill_data_dict)
                 skill = _convert_skill_info_to_skill(skill_info)
                 skills.append(skill)
             except Exception as e:
                 skill_name = (
-                    skill_data_dict.get("name", "unknown")
+                    skill_data_dict.get('name', 'unknown')
                     if isinstance(skill_data_dict, dict)
-                    else "unknown"
+                    else 'unknown'
                 )
-                _logger.warning(f"Failed to convert skill {skill_name}: {e}")
+                _logger.warning(f'Failed to convert skill {skill_name}: {e}')
 
-        sources = data.get("sources", {})
+        sources = data.get('sources', {})
         _logger.info(
-            f"Loaded {len(skills)} skills from agent-server: "
-            f"sources={sources}, names={[s.name for s in skills]}"
+            f'Loaded {len(skills)} skills from agent-server: '
+            f'sources={sources}, names={[s.name for s in skills]}'
         )
 
         return skills
 
     except httpx.HTTPStatusError as e:
         _logger.warning(
-            f"Agent-server returned error status {e.response.status_code}: "
-            f"{e.response.text}"
+            f'Agent-server returned error status {e.response.status_code}: '
+            f'{e.response.text}'
         )
         return []
     except httpx.RequestError as e:
-        _logger.warning(f"Failed to connect to agent-server: {e}")
+        _logger.warning(f'Failed to connect to agent-server: {e}')
         return []
     except Exception as e:
-        _logger.warning(f"Failed to load skills from agent-server: {e}")
+        _logger.warning(f'Failed to load skills from agent-server: {e}')
         return []
 
 
@@ -387,7 +387,7 @@ def _convert_skill_info_to_skill(skill_info: SkillInfo) -> Skill:
 
     if skill_info.triggers:
         # Determine trigger type based on content
-        if any(t.startswith("/") for t in skill_info.triggers):
+        if any(t.startswith('/') for t in skill_info.triggers):
             trigger = TaskTrigger(triggers=skill_info.triggers)
         else:
             trigger = KeywordTrigger(keywords=skill_info.triggers)

@@ -71,22 +71,22 @@ class TestLiveStatusAppConversationService:
             sandbox_startup_timeout=30,
             sandbox_startup_poll_frequency=1,
             httpx_client=self.mock_httpx_client,
-            web_url="https://test.example.com",
-            openhands_provider_base_url="https://provider.example.com",
+            web_url='https://test.example.com',
+            openhands_provider_base_url='https://provider.example.com',
             access_token_hard_timeout=None,
-            app_mode="test",
+            app_mode='test',
         )
 
         # Mock user info
         self.mock_user = Mock()
-        self.mock_user.id = "test_user_123"
-        self.mock_user.llm_model = "gpt-4"
-        self.mock_user.llm_base_url = "https://api.openai.com/v1"
-        self.mock_user.llm_api_key = "test_api_key"
+        self.mock_user.id = 'test_user_123'
+        self.mock_user.llm_model = 'gpt-4'
+        self.mock_user.llm_base_url = 'https://api.openai.com/v1'
+        self.mock_user.llm_api_key = 'test_api_key'
         self.mock_user.confirmation_mode = False
         self.mock_user.search_api_key = None  # Default to None
         self.mock_user.condenser_max_size = None  # Default to None
-        self.mock_user.llm_base_url = "https://api.openai.com/v1"
+        self.mock_user.llm_base_url = 'https://api.openai.com/v1'
         self.mock_user.mcp_config = None  # Default to None to avoid error handling path
 
         # Mock sandbox
@@ -98,7 +98,7 @@ class TestLiveStatusAppConversationService:
     async def test_setup_secrets_for_git_providers_no_provider_tokens(self):
         """Test _setup_secrets_for_git_providers with no provider tokens."""
         # Arrange
-        base_secrets = {"existing": "secret"}
+        base_secrets = {'existing': 'secret'}
         self.mock_user_context.get_secrets.return_value = base_secrets
         self.mock_user_context.get_provider_tokens = AsyncMock(return_value=None)
 
@@ -116,12 +116,12 @@ class TestLiveStatusAppConversationService:
         # Arrange
         base_secrets = {}
         self.mock_user_context.get_secrets.return_value = base_secrets
-        self.mock_jwt_service.create_jws_token.return_value = "test_access_token"
+        self.mock_jwt_service.create_jws_token.return_value = 'test_access_token'
 
         # Mock provider tokens
         provider_tokens = {
-            ProviderType.GITHUB: ProviderToken(token=SecretStr("github_token")),
-            ProviderType.GITLAB: ProviderToken(token=SecretStr("gitlab_token")),
+            ProviderType.GITHUB: ProviderToken(token=SecretStr('github_token')),
+            ProviderType.GITLAB: ProviderToken(token=SecretStr('gitlab_token')),
         }
         self.mock_user_context.get_provider_tokens = AsyncMock(
             return_value=provider_tokens
@@ -131,18 +131,18 @@ class TestLiveStatusAppConversationService:
         result = await self.service._setup_secrets_for_git_providers(self.mock_user)
 
         # Assert
-        assert "GITHUB_TOKEN" in result
-        assert "GITLAB_TOKEN" in result
-        assert isinstance(result["GITHUB_TOKEN"], LookupSecret)
-        assert isinstance(result["GITLAB_TOKEN"], LookupSecret)
+        assert 'GITHUB_TOKEN' in result
+        assert 'GITLAB_TOKEN' in result
+        assert isinstance(result['GITHUB_TOKEN'], LookupSecret)
+        assert isinstance(result['GITLAB_TOKEN'], LookupSecret)
         assert (
-            result["GITHUB_TOKEN"].url
-            == "https://test.example.com/api/v1/webhooks/secrets"
+            result['GITHUB_TOKEN'].url
+            == 'https://test.example.com/api/v1/webhooks/secrets'
         )
-        assert result["GITHUB_TOKEN"].headers["X-Access-Token"] == "test_access_token"
+        assert result['GITHUB_TOKEN'].headers['X-Access-Token'] == 'test_access_token'
         # Verify descriptions are included
-        assert result["GITHUB_TOKEN"].description == "GITHUB authentication token"
-        assert result["GITLAB_TOKEN"].description == "GITLAB authentication token"
+        assert result['GITHUB_TOKEN'].description == 'GITHUB authentication token'
+        assert result['GITLAB_TOKEN'].description == 'GITLAB authentication token'
 
         # Should be called twice, once for each provider
         assert self.mock_jwt_service.create_jws_token.call_count == 2
@@ -151,14 +151,14 @@ class TestLiveStatusAppConversationService:
     async def test_setup_secrets_for_git_providers_with_saas_mode(self):
         """Test _setup_secrets_for_git_providers with SaaS mode uses LookupSecret with X-Access-Token."""
         # Arrange
-        self.service.app_mode = "saas"
+        self.service.app_mode = 'saas'
         base_secrets = {}
         self.mock_user_context.get_secrets.return_value = base_secrets
-        self.mock_jwt_service.create_jws_token.return_value = "test_access_token"
+        self.mock_jwt_service.create_jws_token.return_value = 'test_access_token'
 
         # Mock provider tokens
         provider_tokens = {
-            ProviderType.GITLAB: ProviderToken(token=SecretStr("gitlab_token")),
+            ProviderType.GITLAB: ProviderToken(token=SecretStr('gitlab_token')),
         }
         self.mock_user_context.get_provider_tokens = AsyncMock(
             return_value=provider_tokens
@@ -168,15 +168,15 @@ class TestLiveStatusAppConversationService:
         result = await self.service._setup_secrets_for_git_providers(self.mock_user)
 
         # Assert
-        assert "GITLAB_TOKEN" in result
-        lookup_secret = result["GITLAB_TOKEN"]
+        assert 'GITLAB_TOKEN' in result
+        lookup_secret = result['GITLAB_TOKEN']
         assert isinstance(lookup_secret, LookupSecret)
-        assert "X-Access-Token" in lookup_secret.headers
-        assert lookup_secret.headers["X-Access-Token"] == "test_access_token"
+        assert 'X-Access-Token' in lookup_secret.headers
+        assert lookup_secret.headers['X-Access-Token'] == 'test_access_token'
         # Verify no cookie is included (authentication is via X-Access-Token only)
-        assert "Cookie" not in lookup_secret.headers
+        assert 'Cookie' not in lookup_secret.headers
         # Verify description is included
-        assert lookup_secret.description == "GITLAB authentication token"
+        assert lookup_secret.description == 'GITLAB authentication token'
 
     @pytest.mark.asyncio
     async def test_setup_secrets_for_git_providers_without_web_url(self):
@@ -185,11 +185,11 @@ class TestLiveStatusAppConversationService:
         self.service.web_url = None
         base_secrets = {}
         self.mock_user_context.get_secrets.return_value = base_secrets
-        self.mock_user_context.get_latest_token.return_value = "static_token_value"
+        self.mock_user_context.get_latest_token.return_value = 'static_token_value'
 
         # Mock provider tokens
         provider_tokens = {
-            ProviderType.GITHUB: ProviderToken(token=SecretStr("github_token")),
+            ProviderType.GITHUB: ProviderToken(token=SecretStr('github_token')),
         }
         self.mock_user_context.get_provider_tokens = AsyncMock(
             return_value=provider_tokens
@@ -199,11 +199,11 @@ class TestLiveStatusAppConversationService:
         result = await self.service._setup_secrets_for_git_providers(self.mock_user)
 
         # Assert
-        assert "GITHUB_TOKEN" in result
-        assert isinstance(result["GITHUB_TOKEN"], StaticSecret)
-        assert result["GITHUB_TOKEN"].value.get_secret_value() == "static_token_value"
+        assert 'GITHUB_TOKEN' in result
+        assert isinstance(result['GITHUB_TOKEN'], StaticSecret)
+        assert result['GITHUB_TOKEN'].value.get_secret_value() == 'static_token_value'
         # Verify description is included
-        assert result["GITHUB_TOKEN"].description == "GITHUB authentication token"
+        assert result['GITHUB_TOKEN'].description == 'GITHUB authentication token'
         self.mock_user_context.get_latest_token.assert_called_once_with(
             ProviderType.GITHUB
         )
@@ -219,7 +219,7 @@ class TestLiveStatusAppConversationService:
 
         # Mock provider tokens
         provider_tokens = {
-            ProviderType.GITHUB: ProviderToken(token=SecretStr("github_token")),
+            ProviderType.GITHUB: ProviderToken(token=SecretStr('github_token')),
         }
         self.mock_user_context.get_provider_tokens = AsyncMock(
             return_value=provider_tokens
@@ -229,7 +229,7 @@ class TestLiveStatusAppConversationService:
         result = await self.service._setup_secrets_for_git_providers(self.mock_user)
 
         # Assert
-        assert "GITHUB_TOKEN" not in result
+        assert 'GITHUB_TOKEN' not in result
         assert result == base_secrets
 
     @pytest.mark.asyncio
@@ -238,13 +238,13 @@ class TestLiveStatusAppConversationService:
         # Arrange
         base_secrets = {}
         self.mock_user_context.get_secrets.return_value = base_secrets
-        self.mock_jwt_service.create_jws_token.return_value = "test_access_token"
+        self.mock_jwt_service.create_jws_token.return_value = 'test_access_token'
 
         # Mock provider tokens for multiple providers
         provider_tokens = {
-            ProviderType.GITHUB: ProviderToken(token=SecretStr("github_token")),
-            ProviderType.GITLAB: ProviderToken(token=SecretStr("gitlab_token")),
-            ProviderType.BITBUCKET: ProviderToken(token=SecretStr("bitbucket_token")),
+            ProviderType.GITHUB: ProviderToken(token=SecretStr('github_token')),
+            ProviderType.GITLAB: ProviderToken(token=SecretStr('gitlab_token')),
+            ProviderType.BITBUCKET: ProviderToken(token=SecretStr('bitbucket_token')),
         }
         self.mock_user_context.get_provider_tokens = AsyncMock(
             return_value=provider_tokens
@@ -254,17 +254,17 @@ class TestLiveStatusAppConversationService:
         result = await self.service._setup_secrets_for_git_providers(self.mock_user)
 
         # Assert - verify all secrets have correct descriptions
-        assert "GITHUB_TOKEN" in result
-        assert isinstance(result["GITHUB_TOKEN"], LookupSecret)
-        assert result["GITHUB_TOKEN"].description == "GITHUB authentication token"
+        assert 'GITHUB_TOKEN' in result
+        assert isinstance(result['GITHUB_TOKEN'], LookupSecret)
+        assert result['GITHUB_TOKEN'].description == 'GITHUB authentication token'
 
-        assert "GITLAB_TOKEN" in result
-        assert isinstance(result["GITLAB_TOKEN"], LookupSecret)
-        assert result["GITLAB_TOKEN"].description == "GITLAB authentication token"
+        assert 'GITLAB_TOKEN' in result
+        assert isinstance(result['GITLAB_TOKEN'], LookupSecret)
+        assert result['GITLAB_TOKEN'].description == 'GITLAB authentication token'
 
-        assert "BITBUCKET_TOKEN" in result
-        assert isinstance(result["BITBUCKET_TOKEN"], LookupSecret)
-        assert result["BITBUCKET_TOKEN"].description == "BITBUCKET authentication token"
+        assert 'BITBUCKET_TOKEN' in result
+        assert isinstance(result['BITBUCKET_TOKEN'], LookupSecret)
+        assert result['BITBUCKET_TOKEN'].description == 'BITBUCKET authentication token'
 
     @pytest.mark.asyncio
     async def test_setup_secrets_for_git_providers_static_secret_description(self):
@@ -273,12 +273,12 @@ class TestLiveStatusAppConversationService:
         self.service.web_url = None
         base_secrets = {}
         self.mock_user_context.get_secrets.return_value = base_secrets
-        self.mock_user_context.get_latest_token.return_value = "static_token_value"
+        self.mock_user_context.get_latest_token.return_value = 'static_token_value'
 
         # Mock provider tokens for multiple providers
         provider_tokens = {
-            ProviderType.GITHUB: ProviderToken(token=SecretStr("github_token")),
-            ProviderType.GITLAB: ProviderToken(token=SecretStr("gitlab_token")),
+            ProviderType.GITHUB: ProviderToken(token=SecretStr('github_token')),
+            ProviderType.GITLAB: ProviderToken(token=SecretStr('gitlab_token')),
         }
         self.mock_user_context.get_provider_tokens = AsyncMock(
             return_value=provider_tokens
@@ -288,13 +288,13 @@ class TestLiveStatusAppConversationService:
         result = await self.service._setup_secrets_for_git_providers(self.mock_user)
 
         # Assert - verify StaticSecret objects have descriptions
-        assert "GITHUB_TOKEN" in result
-        assert isinstance(result["GITHUB_TOKEN"], StaticSecret)
-        assert result["GITHUB_TOKEN"].description == "GITHUB authentication token"
+        assert 'GITHUB_TOKEN' in result
+        assert isinstance(result['GITHUB_TOKEN'], StaticSecret)
+        assert result['GITHUB_TOKEN'].description == 'GITHUB authentication token'
 
-        assert "GITLAB_TOKEN" in result
-        assert isinstance(result["GITLAB_TOKEN"], StaticSecret)
-        assert result["GITLAB_TOKEN"].description == "GITLAB authentication token"
+        assert 'GITLAB_TOKEN' in result
+        assert isinstance(result['GITLAB_TOKEN'], StaticSecret)
+        assert result['GITLAB_TOKEN'].description == 'GITLAB authentication token'
 
     @pytest.mark.asyncio
     async def test_setup_secrets_for_git_providers_preserves_custom_secret_descriptions(
@@ -304,23 +304,23 @@ class TestLiveStatusAppConversationService:
         # Arrange
         # Mock custom secrets with descriptions
         custom_secret_with_desc = StaticSecret(
-            value=SecretStr("custom_secret_value"),
-            description="Custom API key for external service",
+            value=SecretStr('custom_secret_value'),
+            description='Custom API key for external service',
         )
         custom_secret_no_desc = StaticSecret(
-            value=SecretStr("another_secret_value"),
+            value=SecretStr('another_secret_value'),
             description=None,
         )
         base_secrets = {
-            "CUSTOM_API_KEY": custom_secret_with_desc,
-            "ANOTHER_SECRET": custom_secret_no_desc,
+            'CUSTOM_API_KEY': custom_secret_with_desc,
+            'ANOTHER_SECRET': custom_secret_no_desc,
         }
         self.mock_user_context.get_secrets.return_value = base_secrets
-        self.mock_jwt_service.create_jws_token.return_value = "test_access_token"
+        self.mock_jwt_service.create_jws_token.return_value = 'test_access_token'
 
         # Mock provider tokens
         provider_tokens = {
-            ProviderType.GITHUB: ProviderToken(token=SecretStr("github_token")),
+            ProviderType.GITHUB: ProviderToken(token=SecretStr('github_token')),
         }
         self.mock_user_context.get_provider_tokens = AsyncMock(
             return_value=provider_tokens
@@ -330,26 +330,26 @@ class TestLiveStatusAppConversationService:
         result = await self.service._setup_secrets_for_git_providers(self.mock_user)
 
         # Assert - verify custom secrets are preserved with their descriptions
-        assert "CUSTOM_API_KEY" in result
-        assert isinstance(result["CUSTOM_API_KEY"], StaticSecret)
+        assert 'CUSTOM_API_KEY' in result
+        assert isinstance(result['CUSTOM_API_KEY'], StaticSecret)
         assert (
-            result["CUSTOM_API_KEY"].description
-            == "Custom API key for external service"
+            result['CUSTOM_API_KEY'].description
+            == 'Custom API key for external service'
         )
         assert (
-            result["CUSTOM_API_KEY"].value.get_secret_value() == "custom_secret_value"
+            result['CUSTOM_API_KEY'].value.get_secret_value() == 'custom_secret_value'
         )
 
-        assert "ANOTHER_SECRET" in result
-        assert isinstance(result["ANOTHER_SECRET"], StaticSecret)
-        assert result["ANOTHER_SECRET"].description is None
+        assert 'ANOTHER_SECRET' in result
+        assert isinstance(result['ANOTHER_SECRET'], StaticSecret)
+        assert result['ANOTHER_SECRET'].description is None
         assert (
-            result["ANOTHER_SECRET"].value.get_secret_value() == "another_secret_value"
+            result['ANOTHER_SECRET'].value.get_secret_value() == 'another_secret_value'
         )
 
         # Verify git provider token is also included
-        assert "GITHUB_TOKEN" in result
-        assert result["GITHUB_TOKEN"].description == "GITHUB authentication token"
+        assert 'GITHUB_TOKEN' in result
+        assert result['GITHUB_TOKEN'].description == 'GITHUB authentication token'
 
     @pytest.mark.asyncio
     async def test_setup_secrets_for_git_providers_custom_secret_empty_description(
@@ -358,10 +358,10 @@ class TestLiveStatusAppConversationService:
         """Test _setup_secrets_for_git_providers handles custom secrets with empty descriptions."""
         # Arrange
         custom_secret_empty_desc = StaticSecret(
-            value=SecretStr("secret_value"),
-            description="",  # Empty string description
+            value=SecretStr('secret_value'),
+            description='',  # Empty string description
         )
-        base_secrets = {"MY_SECRET": custom_secret_empty_desc}
+        base_secrets = {'MY_SECRET': custom_secret_empty_desc}
         self.mock_user_context.get_secrets.return_value = base_secrets
         self.mock_user_context.get_provider_tokens = AsyncMock(return_value=None)
 
@@ -369,17 +369,17 @@ class TestLiveStatusAppConversationService:
         result = await self.service._setup_secrets_for_git_providers(self.mock_user)
 
         # Assert - empty description should be preserved as-is
-        assert "MY_SECRET" in result
-        assert isinstance(result["MY_SECRET"], StaticSecret)
+        assert 'MY_SECRET' in result
+        assert isinstance(result['MY_SECRET'], StaticSecret)
         # Empty string description is preserved
-        assert result["MY_SECRET"].description == ""
+        assert result['MY_SECRET'].description == ''
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_with_custom_model(self):
         """Test _configure_llm_and_mcp with custom LLM model."""
         # Arrange
-        custom_model = "gpt-3.5-turbo"
-        self.mock_user_context.get_mcp_api_key.return_value = "mcp_api_key"
+        custom_model = 'gpt-3.5-turbo'
+        self.mock_user_context.get_mcp_api_key.return_value = 'mcp_api_key'
 
         # Act
         llm, mcp_config = await self.service._configure_llm_and_mcp(
@@ -391,25 +391,25 @@ class TestLiveStatusAppConversationService:
         assert llm.model == custom_model
         assert llm.base_url == self.mock_user.llm_base_url
         assert llm.api_key.get_secret_value() == self.mock_user.llm_api_key
-        assert llm.usage_id == "agent"
+        assert llm.usage_id == 'agent'
 
-        assert "mcpServers" in mcp_config
-        assert "default" in mcp_config["mcpServers"]
+        assert 'mcpServers' in mcp_config
+        assert 'default' in mcp_config['mcpServers']
         assert (
-            mcp_config["mcpServers"]["default"]["url"]
-            == "https://test.example.com/mcp/mcp"
+            mcp_config['mcpServers']['default']['url']
+            == 'https://test.example.com/mcp/mcp'
         )
         assert (
-            mcp_config["mcpServers"]["default"]["headers"]["X-Session-API-Key"]
-            == "mcp_api_key"
+            mcp_config['mcpServers']['default']['headers']['X-Session-API-Key']
+            == 'mcp_api_key'
         )
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_openhands_model_prefers_user_base_url(self):
         """openhands/* model uses user.llm_base_url when provided."""
         # Arrange
-        self.mock_user.llm_model = "openhands/special"
-        self.mock_user.llm_base_url = "https://user-llm.example.com"
+        self.mock_user.llm_model = 'openhands/special'
+        self.mock_user.llm_base_url = 'https://user-llm.example.com'
         self.mock_user_context.get_mcp_api_key.return_value = None
 
         # Act
@@ -418,13 +418,13 @@ class TestLiveStatusAppConversationService:
         )
 
         # Assert
-        assert llm.base_url == "https://user-llm.example.com"
+        assert llm.base_url == 'https://user-llm.example.com'
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_openhands_model_uses_provider_default(self):
         """openhands/* model falls back to configured provider base URL."""
         # Arrange
-        self.mock_user.llm_model = "openhands/default"
+        self.mock_user.llm_model = 'openhands/default'
         self.mock_user.llm_base_url = None
         self.mock_user_context.get_mcp_api_key.return_value = None
 
@@ -434,13 +434,13 @@ class TestLiveStatusAppConversationService:
         )
 
         # Assert
-        assert llm.base_url == "https://provider.example.com"
+        assert llm.base_url == 'https://provider.example.com'
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_openhands_model_no_base_urls(self):
         """openhands/* model sets base_url to None when no sources available."""
         # Arrange
-        self.mock_user.llm_model = "openhands/default"
+        self.mock_user.llm_model = 'openhands/default'
         self.mock_user.llm_base_url = None
         self.service.openhands_provider_base_url = None
         self.mock_user_context.get_mcp_api_key.return_value = None
@@ -451,22 +451,22 @@ class TestLiveStatusAppConversationService:
         )
 
         # Assert
-        assert llm.base_url == "https://llm-proxy.app.all-hands.dev/"
+        assert llm.base_url == 'https://llm-proxy.app.all-hands.dev/'
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_non_openhands_model_ignores_provider(self):
         """Non-openhands model ignores provider base URL and uses user base URL."""
         # Arrange
-        self.mock_user.llm_model = "gpt-4"
-        self.mock_user.llm_base_url = "https://user-llm.example.com"
-        self.service.openhands_provider_base_url = "https://provider.example.com"
+        self.mock_user.llm_model = 'gpt-4'
+        self.mock_user.llm_base_url = 'https://user-llm.example.com'
+        self.service.openhands_provider_base_url = 'https://provider.example.com'
         self.mock_user_context.get_mcp_api_key.return_value = None
 
         # Act
         llm, _ = await self.service._configure_llm_and_mcp(self.mock_user, None)
 
         # Assert
-        assert llm.base_url == "https://user-llm.example.com"
+        assert llm.base_url == 'https://user-llm.example.com'
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_with_user_default_model(self):
@@ -481,9 +481,9 @@ class TestLiveStatusAppConversationService:
 
         # Assert
         assert llm.model == self.mock_user.llm_model
-        assert "mcpServers" in mcp_config
-        assert "default" in mcp_config["mcpServers"]
-        assert "headers" not in mcp_config["mcpServers"]["default"]
+        assert 'mcpServers' in mcp_config
+        assert 'default' in mcp_config['mcpServers']
+        assert 'headers' not in mcp_config['mcpServers']['default']
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_without_web_url(self):
@@ -504,8 +504,8 @@ class TestLiveStatusAppConversationService:
     async def test_configure_llm_and_mcp_tavily_with_user_search_api_key(self):
         """Test _configure_llm_and_mcp adds tavily when user has search_api_key."""
         # Arrange
-        self.mock_user.search_api_key = SecretStr("user_search_key")
-        self.mock_user_context.get_mcp_api_key.return_value = "mcp_api_key"
+        self.mock_user.search_api_key = SecretStr('user_search_key')
+        self.mock_user_context.get_mcp_api_key.return_value = 'mcp_api_key'
 
         # Act
         llm, mcp_config = await self.service._configure_llm_and_mcp(
@@ -514,19 +514,19 @@ class TestLiveStatusAppConversationService:
 
         # Assert
         assert isinstance(llm, LLM)
-        assert "mcpServers" in mcp_config
-        assert "default" in mcp_config["mcpServers"]
-        assert "tavily" in mcp_config["mcpServers"]
+        assert 'mcpServers' in mcp_config
+        assert 'default' in mcp_config['mcpServers']
+        assert 'tavily' in mcp_config['mcpServers']
         assert (
-            mcp_config["mcpServers"]["tavily"]["url"]
-            == "https://mcp.tavily.com/mcp/?tavilyApiKey=user_search_key"
+            mcp_config['mcpServers']['tavily']['url']
+            == 'https://mcp.tavily.com/mcp/?tavilyApiKey=user_search_key'
         )
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_tavily_with_env_tavily_key(self):
         """Test _configure_llm_and_mcp adds tavily when service has tavily_api_key."""
         # Arrange
-        self.service.tavily_api_key = "env_tavily_key"
+        self.service.tavily_api_key = 'env_tavily_key'
         self.mock_user_context.get_mcp_api_key.return_value = None
 
         # Act
@@ -536,20 +536,20 @@ class TestLiveStatusAppConversationService:
 
         # Assert
         assert isinstance(llm, LLM)
-        assert "mcpServers" in mcp_config
-        assert "default" in mcp_config["mcpServers"]
-        assert "tavily" in mcp_config["mcpServers"]
+        assert 'mcpServers' in mcp_config
+        assert 'default' in mcp_config['mcpServers']
+        assert 'tavily' in mcp_config['mcpServers']
         assert (
-            mcp_config["mcpServers"]["tavily"]["url"]
-            == "https://mcp.tavily.com/mcp/?tavilyApiKey=env_tavily_key"
+            mcp_config['mcpServers']['tavily']['url']
+            == 'https://mcp.tavily.com/mcp/?tavilyApiKey=env_tavily_key'
         )
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_tavily_user_key_takes_precedence(self):
         """Test _configure_llm_and_mcp user search_api_key takes precedence over env key."""
         # Arrange
-        self.mock_user.search_api_key = SecretStr("user_search_key")
-        self.service.tavily_api_key = "env_tavily_key"
+        self.mock_user.search_api_key = SecretStr('user_search_key')
+        self.service.tavily_api_key = 'env_tavily_key'
         self.mock_user_context.get_mcp_api_key.return_value = None
 
         # Act
@@ -559,11 +559,11 @@ class TestLiveStatusAppConversationService:
 
         # Assert
         assert isinstance(llm, LLM)
-        assert "mcpServers" in mcp_config
-        assert "tavily" in mcp_config["mcpServers"]
+        assert 'mcpServers' in mcp_config
+        assert 'tavily' in mcp_config['mcpServers']
         assert (
-            mcp_config["mcpServers"]["tavily"]["url"]
-            == "https://mcp.tavily.com/mcp/?tavilyApiKey=user_search_key"
+            mcp_config['mcpServers']['tavily']['url']
+            == 'https://mcp.tavily.com/mcp/?tavilyApiKey=user_search_key'
         )
 
     @pytest.mark.asyncio
@@ -581,9 +581,9 @@ class TestLiveStatusAppConversationService:
 
         # Assert
         assert isinstance(llm, LLM)
-        assert "mcpServers" in mcp_config
-        assert "default" in mcp_config["mcpServers"]
-        assert "tavily" not in mcp_config["mcpServers"]
+        assert 'mcpServers' in mcp_config
+        assert 'default' in mcp_config['mcpServers']
+        assert 'tavily' not in mcp_config['mcpServers']
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_saas_mode_no_tavily_without_user_key(self):
@@ -605,9 +605,9 @@ class TestLiveStatusAppConversationService:
 
         # Assert
         assert isinstance(llm, LLM)
-        assert "mcpServers" in mcp_config
-        assert "default" in mcp_config["mcpServers"]
-        assert "tavily" not in mcp_config["mcpServers"]
+        assert 'mcpServers' in mcp_config
+        assert 'default' in mcp_config['mcpServers']
+        assert 'tavily' not in mcp_config['mcpServers']
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_saas_mode_with_user_search_key(self):
@@ -618,7 +618,7 @@ class TestLiveStatusAppConversationService:
         # Arrange - simulate SAAS mode with user having their own search key
         self.service.app_mode = AppMode.SAAS.value
         self.service.tavily_api_key = None  # In SAAS mode, this should be None
-        self.mock_user.search_api_key = SecretStr("user_search_key")
+        self.mock_user.search_api_key = SecretStr('user_search_key')
         self.mock_user_context.get_mcp_api_key.return_value = None
 
         # Act
@@ -628,20 +628,20 @@ class TestLiveStatusAppConversationService:
 
         # Assert
         assert isinstance(llm, LLM)
-        assert "mcpServers" in mcp_config
-        assert "default" in mcp_config["mcpServers"]
-        assert "tavily" in mcp_config["mcpServers"]
+        assert 'mcpServers' in mcp_config
+        assert 'default' in mcp_config['mcpServers']
+        assert 'tavily' in mcp_config['mcpServers']
         assert (
-            mcp_config["mcpServers"]["tavily"]["url"]
-            == "https://mcp.tavily.com/mcp/?tavilyApiKey=user_search_key"
+            mcp_config['mcpServers']['tavily']['url']
+            == 'https://mcp.tavily.com/mcp/?tavilyApiKey=user_search_key'
         )
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_tavily_with_empty_user_search_key(self):
         """Test _configure_llm_and_mcp handles empty user search_api_key correctly."""
         # Arrange
-        self.mock_user.search_api_key = SecretStr("")  # Empty string
-        self.service.tavily_api_key = "env_tavily_key"
+        self.mock_user.search_api_key = SecretStr('')  # Empty string
+        self.service.tavily_api_key = 'env_tavily_key'
         self.mock_user_context.get_mcp_api_key.return_value = None
 
         # Act
@@ -651,20 +651,20 @@ class TestLiveStatusAppConversationService:
 
         # Assert
         assert isinstance(llm, LLM)
-        assert "mcpServers" in mcp_config
-        assert "tavily" in mcp_config["mcpServers"]
+        assert 'mcpServers' in mcp_config
+        assert 'tavily' in mcp_config['mcpServers']
         # Should fall back to env key since user key is empty
         assert (
-            mcp_config["mcpServers"]["tavily"]["url"]
-            == "https://mcp.tavily.com/mcp/?tavilyApiKey=env_tavily_key"
+            mcp_config['mcpServers']['tavily']['url']
+            == 'https://mcp.tavily.com/mcp/?tavilyApiKey=env_tavily_key'
         )
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_tavily_with_whitespace_user_search_key(self):
         """Test _configure_llm_and_mcp handles whitespace-only user search_api_key correctly."""
         # Arrange
-        self.mock_user.search_api_key = SecretStr("   ")  # Whitespace only
-        self.service.tavily_api_key = "env_tavily_key"
+        self.mock_user.search_api_key = SecretStr('   ')  # Whitespace only
+        self.service.tavily_api_key = 'env_tavily_key'
         self.mock_user_context.get_mcp_api_key.return_value = None
 
         # Act
@@ -674,22 +674,22 @@ class TestLiveStatusAppConversationService:
 
         # Assert
         assert isinstance(llm, LLM)
-        assert "mcpServers" in mcp_config
-        assert "tavily" in mcp_config["mcpServers"]
+        assert 'mcpServers' in mcp_config
+        assert 'tavily' in mcp_config['mcpServers']
         # Should fall back to env key since user key is whitespace only
         assert (
-            mcp_config["mcpServers"]["tavily"]["url"]
-            == "https://mcp.tavily.com/mcp/?tavilyApiKey=env_tavily_key"
+            mcp_config['mcpServers']['tavily']['url']
+            == 'https://mcp.tavily.com/mcp/?tavilyApiKey=env_tavily_key'
         )
 
     @patch(
-        "openhands.app_server.app_conversation.live_status_app_conversation_service.get_planning_tools"
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.get_planning_tools'
     )
     @patch(
-        "openhands.app_server.app_conversation.app_conversation_service_base.AppConversationServiceBase._create_condenser"
+        'openhands.app_server.app_conversation.app_conversation_service_base.AppConversationServiceBase._create_condenser'
     )
     @patch(
-        "openhands.app_server.app_conversation.live_status_app_conversation_service.format_plan_structure"
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.format_plan_structure'
     )
     def test_create_agent_with_context_planning_agent(
         self, mock_format_plan, mock_create_condenser, mock_get_tools
@@ -701,13 +701,13 @@ class TestLiveStatusAppConversationService:
         mock_get_tools.return_value = []
         mock_condenser = Mock()
         mock_create_condenser.return_value = mock_condenser
-        mock_format_plan.return_value = "test_plan_structure"
-        mcp_config = {"default": {"url": "test"}}
-        system_message_suffix = "Test suffix"
+        mock_format_plan.return_value = 'test_plan_structure'
+        mcp_config = {'default': {'url': 'test'}}
+        system_message_suffix = 'Test suffix'
 
         # Act
         with patch(
-            "openhands.app_server.app_conversation.live_status_app_conversation_service.Agent"
+            'openhands.app_server.app_conversation.live_status_app_conversation_service.Agent'
         ) as mock_agent_class:
             mock_agent_instance = Mock()
             mock_agent_instance.model_copy.return_value = mock_agent_instance
@@ -724,24 +724,24 @@ class TestLiveStatusAppConversationService:
             # Assert
             mock_agent_class.assert_called_once()
             call_kwargs = mock_agent_class.call_args[1]
-            assert call_kwargs["llm"] == mock_llm
-            assert call_kwargs["system_prompt_filename"] == "system_prompt_planning.j2"
+            assert call_kwargs['llm'] == mock_llm
+            assert call_kwargs['system_prompt_filename'] == 'system_prompt_planning.j2'
             assert (
-                call_kwargs["system_prompt_kwargs"]["plan_structure"]
-                == "test_plan_structure"
+                call_kwargs['system_prompt_kwargs']['plan_structure']
+                == 'test_plan_structure'
             )
-            assert call_kwargs["mcp_config"] == mcp_config
-            assert call_kwargs["security_analyzer"] is None
-            assert call_kwargs["condenser"] == mock_condenser
+            assert call_kwargs['mcp_config'] == mcp_config
+            assert call_kwargs['security_analyzer'] is None
+            assert call_kwargs['condenser'] == mock_condenser
             mock_create_condenser.assert_called_once_with(
                 mock_llm, AgentType.PLAN, self.mock_user.condenser_max_size
             )
 
     @patch(
-        "openhands.app_server.app_conversation.live_status_app_conversation_service.get_default_tools"
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.get_default_tools'
     )
     @patch(
-        "openhands.app_server.app_conversation.app_conversation_service_base.AppConversationServiceBase._create_condenser"
+        'openhands.app_server.app_conversation.app_conversation_service_base.AppConversationServiceBase._create_condenser'
     )
     def test_create_agent_with_context_default_agent(
         self, mock_create_condenser, mock_get_tools
@@ -753,11 +753,11 @@ class TestLiveStatusAppConversationService:
         mock_get_tools.return_value = []
         mock_condenser = Mock()
         mock_create_condenser.return_value = mock_condenser
-        mcp_config = {"default": {"url": "test"}}
+        mcp_config = {'default': {'url': 'test'}}
 
         # Act
         with patch(
-            "openhands.app_server.app_conversation.live_status_app_conversation_service.Agent"
+            'openhands.app_server.app_conversation.live_status_app_conversation_service.Agent'
         ) as mock_agent_class:
             mock_agent_instance = Mock()
             mock_agent_instance.model_copy.return_value = mock_agent_instance
@@ -774,10 +774,10 @@ class TestLiveStatusAppConversationService:
             # Assert
             mock_agent_class.assert_called_once()
             call_kwargs = mock_agent_class.call_args[1]
-            assert call_kwargs["llm"] == mock_llm
-            assert call_kwargs["system_prompt_kwargs"]["cli_mode"] is False
-            assert call_kwargs["mcp_config"] == mcp_config
-            assert call_kwargs["condenser"] == mock_condenser
+            assert call_kwargs['llm'] == mock_llm
+            assert call_kwargs['system_prompt_kwargs']['cli_mode'] is False
+            assert call_kwargs['mcp_config'] == mcp_config
+            assert call_kwargs['condenser'] == mock_condenser
             mock_get_tools.assert_called_once_with(enable_browser=True)
             mock_create_condenser.assert_called_once_with(
                 mock_llm, AgentType.DEFAULT, self.mock_user.condenser_max_size
@@ -785,7 +785,7 @@ class TestLiveStatusAppConversationService:
 
     @pytest.mark.asyncio
     @patch(
-        "openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl"
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl'
     )
     async def test_finalize_conversation_request_with_skills(
         self, mock_experiment_manager
@@ -796,8 +796,8 @@ class TestLiveStatusAppConversationService:
 
         # Create mock LLM with required attributes for _update_agent_with_llm_metadata
         mock_llm = Mock(spec=LLM)
-        mock_llm.model = "gpt-4"  # Non-openhands model, so no metadata update
-        mock_llm.usage_id = "agent"
+        mock_llm.model = 'gpt-4'  # Non-openhands model, so no metadata update
+        mock_llm.usage_id = 'agent'
 
         mock_updated_agent = Mock(spec=Agent)
         mock_updated_agent.llm = mock_llm
@@ -807,9 +807,9 @@ class TestLiveStatusAppConversationService:
         )
 
         conversation_id = uuid4()
-        workspace = LocalWorkspace(working_dir="/test")
+        workspace = LocalWorkspace(working_dir='/test')
         initial_message = Mock(spec=SendMessageRequest)
-        secrets = {"test": StaticSecret(value="secret")}
+        secrets = {'test': StaticSecret(value='secret')}
         remote_workspace = Mock(spec=AsyncRemoteWorkspace)
 
         # Mock the skills loading method
@@ -827,8 +827,8 @@ class TestLiveStatusAppConversationService:
             secrets,
             self.mock_sandbox,
             remote_workspace,
-            "test_repo",
-            "/test/dir",
+            'test_repo',
+            '/test/dir',
         )
 
         # Assert
@@ -846,13 +846,13 @@ class TestLiveStatusAppConversationService:
             self.mock_sandbox,
             mock_updated_agent,
             remote_workspace,
-            "test_repo",
-            "/test/dir",
+            'test_repo',
+            '/test/dir',
         )
 
     @pytest.mark.asyncio
     @patch(
-        "openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl"
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl'
     )
     async def test_finalize_conversation_request_without_skills(
         self, mock_experiment_manager
@@ -863,8 +863,8 @@ class TestLiveStatusAppConversationService:
 
         # Create mock LLM with required attributes for _update_agent_with_llm_metadata
         mock_llm = Mock(spec=LLM)
-        mock_llm.model = "gpt-4"  # Non-openhands model, so no metadata update
-        mock_llm.usage_id = "agent"
+        mock_llm.model = 'gpt-4'  # Non-openhands model, so no metadata update
+        mock_llm.usage_id = 'agent'
 
         mock_updated_agent = Mock(spec=Agent)
         mock_updated_agent.llm = mock_llm
@@ -873,8 +873,8 @@ class TestLiveStatusAppConversationService:
             mock_updated_agent
         )
 
-        workspace = LocalWorkspace(working_dir="/test")
-        secrets = {"test": StaticSecret(value="secret")}
+        workspace = LocalWorkspace(working_dir='/test')
+        secrets = {'test': StaticSecret(value='secret')}
 
         # Act
         result = await self.service._finalize_conversation_request(
@@ -887,7 +887,7 @@ class TestLiveStatusAppConversationService:
             self.mock_sandbox,
             None,
             None,
-            "/test/dir",
+            '/test/dir',
         )
 
         # Assert
@@ -898,7 +898,7 @@ class TestLiveStatusAppConversationService:
 
     @pytest.mark.asyncio
     @patch(
-        "openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl"
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl'
     )
     async def test_finalize_conversation_request_skills_loading_fails(
         self, mock_experiment_manager
@@ -909,8 +909,8 @@ class TestLiveStatusAppConversationService:
 
         # Create mock LLM with required attributes for _update_agent_with_llm_metadata
         mock_llm = Mock(spec=LLM)
-        mock_llm.model = "gpt-4"  # Non-openhands model, so no metadata update
-        mock_llm.usage_id = "agent"
+        mock_llm.model = 'gpt-4'  # Non-openhands model, so no metadata update
+        mock_llm.usage_id = 'agent'
 
         mock_updated_agent = Mock(spec=Agent)
         mock_updated_agent.llm = mock_llm
@@ -919,18 +919,18 @@ class TestLiveStatusAppConversationService:
             mock_updated_agent
         )
 
-        workspace = LocalWorkspace(working_dir="/test")
-        secrets = {"test": StaticSecret(value="secret")}
+        workspace = LocalWorkspace(working_dir='/test')
+        secrets = {'test': StaticSecret(value='secret')}
         remote_workspace = Mock(spec=AsyncRemoteWorkspace)
 
         # Mock skills loading to raise an exception
         self.service._load_skills_and_update_agent = AsyncMock(
-            side_effect=Exception("Skills loading failed")
+            side_effect=Exception('Skills loading failed')
         )
 
         # Act
         with patch(
-            "openhands.app_server.app_conversation.live_status_app_conversation_service._logger"
+            'openhands.app_server.app_conversation.live_status_app_conversation_service._logger'
         ) as mock_logger:
             result = await self.service._finalize_conversation_request(
                 mock_agent,
@@ -941,8 +941,8 @@ class TestLiveStatusAppConversationService:
                 secrets,
                 self.mock_sandbox,
                 remote_workspace,
-                "test_repo",
-                "/test/dir",
+                'test_repo',
+                '/test/dir',
             )
 
             # Assert
@@ -959,9 +959,9 @@ class TestLiveStatusAppConversationService:
         self.mock_user_context.get_user_info.return_value = self.mock_user
 
         # Mock all the helper methods
-        mock_secrets = {"GITHUB_TOKEN": Mock()}
+        mock_secrets = {'GITHUB_TOKEN': Mock()}
         mock_llm = Mock(spec=LLM)
-        mock_mcp_config = {"default": {"url": "test"}}
+        mock_mcp_config = {'default': {'url': 'test'}}
         mock_agent = Mock(spec=Agent)
         mock_final_request = Mock(spec=StartConversationRequest)
 
@@ -980,14 +980,14 @@ class TestLiveStatusAppConversationService:
         result = await self.service._build_start_conversation_request_for_user(
             sandbox=self.mock_sandbox,
             initial_message=None,
-            system_message_suffix="Test suffix",
+            system_message_suffix='Test suffix',
             git_provider=ProviderType.GITHUB,
-            working_dir="/test/dir",
+            working_dir='/test/dir',
             agent_type=AgentType.DEFAULT,
-            llm_model="gpt-4",
+            llm_model='gpt-4',
             conversation_id=None,
             remote_workspace=None,
-            selected_repository="test/repo",
+            selected_repository='test/repo',
         )
 
         # Assert
@@ -997,12 +997,12 @@ class TestLiveStatusAppConversationService:
             self.mock_user
         )
         self.service._configure_llm_and_mcp.assert_called_once_with(
-            self.mock_user, "gpt-4"
+            self.mock_user, 'gpt-4'
         )
         self.service._create_agent_with_context.assert_called_once_with(
             mock_llm,
             AgentType.DEFAULT,
-            "Test suffix",
+            'Test suffix',
             mock_mcp_config,
             self.mock_user.condenser_max_size,
             secrets=mock_secrets,
@@ -1018,12 +1018,12 @@ class TestLiveStatusAppConversationService:
         # Mock conversation info
         mock_conversation_info = Mock(spec=AppConversationInfo)
         mock_conversation_info.id = conversation_id
-        mock_conversation_info.title = "Test Conversation"
+        mock_conversation_info.title = 'Test Conversation'
         mock_conversation_info.created_at = datetime(2024, 1, 1, 12, 0, 0)
         mock_conversation_info.updated_at = datetime(2024, 1, 1, 13, 0, 0)
-        mock_conversation_info.selected_repository = "test/repo"
-        mock_conversation_info.git_provider = "github"
-        mock_conversation_info.selected_branch = "main"
+        mock_conversation_info.selected_repository = 'test/repo'
+        mock_conversation_info.git_provider = 'github'
+        mock_conversation_info.selected_branch = 'main'
         mock_conversation_info.model_dump_json = Mock(
             return_value='{"id": "test", "title": "Test Conversation"}'
         )
@@ -1036,19 +1036,19 @@ class TestLiveStatusAppConversationService:
         mock_event1 = Mock(spec=Event)
         mock_event1.id = uuid4()
         mock_event1.model_dump = Mock(
-            return_value={"id": str(mock_event1.id), "type": "action"}
+            return_value={'id': str(mock_event1.id), 'type': 'action'}
         )
 
         mock_event2 = Mock(spec=Event)
         mock_event2.id = uuid4()
         mock_event2.model_dump = Mock(
-            return_value={"id": str(mock_event2.id), "type": "observation"}
+            return_value={'id': str(mock_event2.id), 'type': 'observation'}
         )
 
         # Mock event service search_events to return paginated results
         mock_event_page1 = Mock()
         mock_event_page1.items = [mock_event1]
-        mock_event_page1.next_page_id = "page2"
+        mock_event_page1.next_page_id = 'page2'
 
         mock_event_page2 = Mock()
         mock_event_page2.items = [mock_event2]
@@ -1066,30 +1066,30 @@ class TestLiveStatusAppConversationService:
         assert isinstance(result, bytes)  # Should be bytes
 
         # Verify the zip file contents
-        with zipfile.ZipFile(io.BytesIO(result), "r") as zipf:
+        with zipfile.ZipFile(io.BytesIO(result), 'r') as zipf:
             file_list = zipf.namelist()
 
             # Should contain meta.json and event files
-            assert "meta.json" in file_list
+            assert 'meta.json' in file_list
             assert any(
-                f.startswith("event_") and f.endswith(".json") for f in file_list
+                f.startswith('event_') and f.endswith('.json') for f in file_list
             )
 
             # Check meta.json content
-            with zipf.open("meta.json") as meta_file:
-                meta_content = meta_file.read().decode("utf-8")
+            with zipf.open('meta.json') as meta_file:
+                meta_content = meta_file.read().decode('utf-8')
                 assert '"id": "test"' in meta_content
                 assert '"title": "Test Conversation"' in meta_content
 
             # Check event files
-            event_files = [f for f in file_list if f.startswith("event_")]
+            event_files = [f for f in file_list if f.startswith('event_')]
             assert len(event_files) == 2  # Should have 2 event files
 
             # Verify event file content
             with zipf.open(event_files[0]) as event_file:
-                event_content = json.loads(event_file.read().decode("utf-8"))
-                assert "id" in event_content
-                assert "type" in event_content
+                event_content = json.loads(event_file.read().decode('utf-8'))
+                assert 'id' in event_content
+                assert 'type' in event_content
 
         # Verify service calls
         self.mock_app_conversation_info_service.get_app_conversation_info.assert_called_once_with(
@@ -1109,7 +1109,7 @@ class TestLiveStatusAppConversationService:
 
         # Act & Assert
         with pytest.raises(
-            ValueError, match=f"Conversation not found: {conversation_id}"
+            ValueError, match=f'Conversation not found: {conversation_id}'
         ):
             await self.service.export_conversation(conversation_id)
 
@@ -1128,7 +1128,7 @@ class TestLiveStatusAppConversationService:
         # Mock conversation info
         mock_conversation_info = Mock(spec=AppConversationInfo)
         mock_conversation_info.id = conversation_id
-        mock_conversation_info.title = "Empty Conversation"
+        mock_conversation_info.title = 'Empty Conversation'
         mock_conversation_info.model_dump_json = Mock(
             return_value='{"id": "test", "title": "Empty Conversation"}'
         )
@@ -1152,12 +1152,12 @@ class TestLiveStatusAppConversationService:
         assert isinstance(result, bytes)  # Should be bytes
 
         # Verify the zip file contents
-        with zipfile.ZipFile(io.BytesIO(result), "r") as zipf:
+        with zipfile.ZipFile(io.BytesIO(result), 'r') as zipf:
             file_list = zipf.namelist()
 
             # Should only contain meta.json (no event files)
-            assert "meta.json" in file_list
-            assert len([f for f in file_list if f.startswith("event_")]) == 0
+            assert 'meta.json' in file_list
+            assert len([f for f in file_list if f.startswith('event_')]) == 0
 
         # Verify service calls
         self.mock_app_conversation_info_service.get_app_conversation_info.assert_called_once_with(
@@ -1174,7 +1174,7 @@ class TestLiveStatusAppConversationService:
         # Mock conversation info
         mock_conversation_info = Mock(spec=AppConversationInfo)
         mock_conversation_info.id = conversation_id
-        mock_conversation_info.title = "Large Conversation"
+        mock_conversation_info.title = 'Large Conversation'
         mock_conversation_info.model_dump_json = Mock(
             return_value='{"id": "test", "title": "Large Conversation"}'
         )
@@ -1195,8 +1195,8 @@ class TestLiveStatusAppConversationService:
                 mock_event.id = uuid4()
                 mock_event.model_dump = Mock(
                     return_value={
-                        "id": str(mock_event.id),
-                        "type": f"event_page_{page_num}_item_{i}",
+                        'id': str(mock_event.id),
+                        'type': f'event_page_{page_num}_item_{i}',
                     }
                 )
                 page_events.append(mock_event)
@@ -1205,7 +1205,7 @@ class TestLiveStatusAppConversationService:
             mock_event_page = Mock()
             mock_event_page.items = page_events
             mock_event_page.next_page_id = (
-                f"page{page_num + 1}" if page_num < total_pages - 1 else None
+                f'page{page_num + 1}' if page_num < total_pages - 1 else None
             )
 
             if page_num == 0:
@@ -1229,12 +1229,12 @@ class TestLiveStatusAppConversationService:
         assert isinstance(result, bytes)  # Should be bytes
 
         # Verify the zip file contents
-        with zipfile.ZipFile(io.BytesIO(result), "r") as zipf:
+        with zipfile.ZipFile(io.BytesIO(result), 'r') as zipf:
             file_list = zipf.namelist()
 
             # Should contain meta.json and all event files
-            assert "meta.json" in file_list
-            event_files = [f for f in file_list if f.startswith("event_")]
+            assert 'meta.json' in file_list
+            event_files = [f for f in file_list if f.startswith('event_')]
             assert (
                 len(event_files) == total_pages * events_per_page
             )  # Should have all events
@@ -1243,10 +1243,10 @@ class TestLiveStatusAppConversationService:
         assert self.mock_event_service.search_events.call_count == total_pages
 
     @patch(
-        "openhands.app_server.app_conversation.live_status_app_conversation_service.AsyncRemoteWorkspace"
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.AsyncRemoteWorkspace'
     )
     @patch(
-        "openhands.app_server.app_conversation.live_status_app_conversation_service.ConversationInfo"
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.ConversationInfo'
     )
     async def test_start_app_conversation_default_title_uses_first_five_characters(
         self, mock_conversation_info_class, mock_remote_workspace_class
@@ -1255,20 +1255,20 @@ class TestLiveStatusAppConversationService:
         # Arrange
         conversation_id = uuid4()
         conversation_id_hex = conversation_id.hex
-        expected_title = f"Conversation {conversation_id_hex[:5]}"
+        expected_title = f'Conversation {conversation_id_hex[:5]}'
 
         # Mock user context
-        self.mock_user_context.get_user_id = AsyncMock(return_value="test_user_123")
+        self.mock_user_context.get_user_id = AsyncMock(return_value='test_user_123')
         self.mock_user_context.get_user_info = AsyncMock(return_value=self.mock_user)
 
         # Mock sandbox and sandbox spec
         mock_sandbox_spec = Mock(spec=SandboxSpecInfo)
-        mock_sandbox_spec.working_dir = "/test/workspace"
+        mock_sandbox_spec.working_dir = '/test/workspace'
         self.mock_sandbox.sandbox_spec_id = str(uuid4())
         self.mock_sandbox.id = str(uuid4())  # Ensure sandbox.id is a string
-        self.mock_sandbox.session_api_key = "test_session_key"
+        self.mock_sandbox.session_api_key = 'test_session_key'
         exposed_url = ExposedUrl(
-            name=AGENT_SERVER, url="http://agent-server:8000", port=60000
+            name=AGENT_SERVER, url='http://agent-server:8000', port=60000
         )
         self.mock_sandbox.exposed_urls = [exposed_url]
 
@@ -1297,10 +1297,10 @@ class TestLiveStatusAppConversationService:
         # Mock build start conversation request
         mock_agent = Mock(spec=Agent)
         mock_agent.llm = Mock(spec=LLM)
-        mock_agent.llm.model = "gpt-4"
+        mock_agent.llm.model = 'gpt-4'
         mock_start_request = Mock(spec=StartConversationRequest)
         mock_start_request.agent = mock_agent
-        mock_start_request.model_dump.return_value = {"test": "data"}
+        mock_start_request.model_dump.return_value = {'test': 'data'}
 
         self.service._build_start_conversation_request_for_user = AsyncMock(
             return_value=mock_start_request
@@ -1315,7 +1315,7 @@ class TestLiveStatusAppConversationService:
 
         # Mock HTTP response from agent server
         mock_response = Mock()
-        mock_response.json.return_value = {"id": str(conversation_id)}
+        mock_response.json.return_value = {'id': str(conversation_id)}
         mock_response.raise_for_status = Mock()
         self.mock_httpx_client.post = AsyncMock(return_value=mock_response)
 
@@ -1353,8 +1353,8 @@ class TestLiveStatusAppConversationService:
 
         self.mock_user.mcp_config = MCPConfig(
             sse_servers=[
-                MCPSSEServerConfig(url="https://linear.app/sse", api_key="linear_key"),
-                MCPSSEServerConfig(url="https://notion.com/sse"),
+                MCPSSEServerConfig(url='https://linear.app/sse', api_key='linear_key'),
+                MCPSSEServerConfig(url='https://notion.com/sse'),
             ]
         )
         self.mock_user_context.get_mcp_api_key.return_value = None
@@ -1366,27 +1366,27 @@ class TestLiveStatusAppConversationService:
 
         # Assert
         assert isinstance(llm, LLM)
-        assert "mcpServers" in mcp_config
+        assert 'mcpServers' in mcp_config
 
         # Should have default server + 2 custom SSE servers
-        mcp_servers = mcp_config["mcpServers"]
-        assert "default" in mcp_servers
+        mcp_servers = mcp_config['mcpServers']
+        assert 'default' in mcp_servers
 
         # Find SSE servers (they have sse_ prefix)
-        sse_servers = {k: v for k, v in mcp_servers.items() if k.startswith("sse_")}
+        sse_servers = {k: v for k, v in mcp_servers.items() if k.startswith('sse_')}
         assert len(sse_servers) == 2
 
         # Verify SSE server configurations
         for server_name, server_config in sse_servers.items():
-            assert server_name.startswith("sse_")
+            assert server_name.startswith('sse_')
             assert len(server_name) > 4  # Has UUID suffix
-            assert "url" in server_config
-            assert "transport" in server_config
-            assert server_config["transport"] == "sse"
+            assert 'url' in server_config
+            assert 'transport' in server_config
+            assert server_config['transport'] == 'sse'
 
             # Check if this is the Linear server (has headers)
-            if "headers" in server_config:
-                assert server_config["headers"]["Authorization"] == "Bearer linear_key"
+            if 'headers' in server_config:
+                assert server_config['headers']['Authorization'] == 'Bearer linear_key'
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_with_custom_shttp_servers(self):
@@ -1397,8 +1397,8 @@ class TestLiveStatusAppConversationService:
         self.mock_user.mcp_config = MCPConfig(
             shttp_servers=[
                 MCPSHTTPServerConfig(
-                    url="https://example.com/mcp",
-                    api_key="test_key",
+                    url='https://example.com/mcp',
+                    api_key='test_key',
                     timeout=120,
                 )
             ]
@@ -1412,17 +1412,17 @@ class TestLiveStatusAppConversationService:
 
         # Assert
         assert isinstance(llm, LLM)
-        mcp_servers = mcp_config["mcpServers"]
+        mcp_servers = mcp_config['mcpServers']
 
         # Find SHTTP servers
-        shttp_servers = {k: v for k, v in mcp_servers.items() if k.startswith("shttp_")}
+        shttp_servers = {k: v for k, v in mcp_servers.items() if k.startswith('shttp_')}
         assert len(shttp_servers) == 1
 
         server_config = list(shttp_servers.values())[0]
-        assert server_config["url"] == "https://example.com/mcp"
-        assert server_config["transport"] == "streamable-http"
-        assert server_config["headers"]["Authorization"] == "Bearer test_key"
-        assert server_config["timeout"] == 120
+        assert server_config['url'] == 'https://example.com/mcp'
+        assert server_config['transport'] == 'streamable-http'
+        assert server_config['headers']['Authorization'] == 'Bearer test_key'
+        assert server_config['timeout'] == 120
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_with_custom_stdio_servers(self):
@@ -1433,10 +1433,10 @@ class TestLiveStatusAppConversationService:
         self.mock_user.mcp_config = MCPConfig(
             stdio_servers=[
                 MCPStdioServerConfig(
-                    name="my-custom-server",
-                    command="npx",
-                    args=["-y", "my-package"],
-                    env={"API_KEY": "secret"},
+                    name='my-custom-server',
+                    command='npx',
+                    args=['-y', 'my-package'],
+                    env={'API_KEY': 'secret'},
                 )
             ]
         )
@@ -1449,14 +1449,14 @@ class TestLiveStatusAppConversationService:
 
         # Assert
         assert isinstance(llm, LLM)
-        mcp_servers = mcp_config["mcpServers"]
+        mcp_servers = mcp_config['mcpServers']
 
         # STDIO server should use its explicit name
-        assert "my-custom-server" in mcp_servers
-        server_config = mcp_servers["my-custom-server"]
-        assert server_config["command"] == "npx"
-        assert server_config["args"] == ["-y", "my-package"]
-        assert server_config["env"] == {"API_KEY": "secret"}
+        assert 'my-custom-server' in mcp_servers
+        server_config = mcp_servers['my-custom-server']
+        assert server_config['command'] == 'npx'
+        assert server_config['args'] == ['-y', 'my-package']
+        assert server_config['env'] == {'API_KEY': 'secret'}
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_merges_system_and_custom_servers(self):
@@ -1468,16 +1468,16 @@ class TestLiveStatusAppConversationService:
             MCPStdioServerConfig,
         )
 
-        self.mock_user.search_api_key = SecretStr("tavily_key")
+        self.mock_user.search_api_key = SecretStr('tavily_key')
         self.mock_user.mcp_config = MCPConfig(
-            sse_servers=[MCPSSEServerConfig(url="https://custom.com/sse")],
+            sse_servers=[MCPSSEServerConfig(url='https://custom.com/sse')],
             stdio_servers=[
                 MCPStdioServerConfig(
-                    name="custom-stdio", command="node", args=["app.js"]
+                    name='custom-stdio', command='node', args=['app.js']
                 )
             ],
         )
-        self.mock_user_context.get_mcp_api_key.return_value = "mcp_api_key"
+        self.mock_user_context.get_mcp_api_key.return_value = 'mcp_api_key'
 
         # Act
         llm, mcp_config = await self.service._configure_llm_and_mcp(
@@ -1485,18 +1485,18 @@ class TestLiveStatusAppConversationService:
         )
 
         # Assert
-        mcp_servers = mcp_config["mcpServers"]
+        mcp_servers = mcp_config['mcpServers']
 
         # Should have system servers
-        assert "default" in mcp_servers
-        assert "tavily" in mcp_servers
+        assert 'default' in mcp_servers
+        assert 'tavily' in mcp_servers
 
         # Should have custom SSE server with UUID name
-        sse_servers = [k for k in mcp_servers if k.startswith("sse_")]
+        sse_servers = [k for k in mcp_servers if k.startswith('sse_')]
         assert len(sse_servers) == 1
 
         # Should have custom STDIO server with explicit name
-        assert "custom-stdio" in mcp_servers
+        assert 'custom-stdio' in mcp_servers
 
         # Total: default + tavily + 1 SSE + 1 STDIO = 4 servers
         assert len(mcp_servers) == 4
@@ -1508,7 +1508,7 @@ class TestLiveStatusAppConversationService:
         self.mock_user.mcp_config = Mock()
         # Simulate error when accessing sse_servers
         self.mock_user.mcp_config.sse_servers = property(
-            lambda self: (_ for _ in ()).throw(Exception("Config error"))
+            lambda self: (_ for _ in ()).throw(Exception('Config error'))
         )
         self.mock_user_context.get_mcp_api_key.return_value = None
 
@@ -1519,15 +1519,15 @@ class TestLiveStatusAppConversationService:
 
         # Assert - should still return valid config with system servers only
         assert isinstance(llm, LLM)
-        mcp_servers = mcp_config["mcpServers"]
-        assert "default" in mcp_servers
+        mcp_servers = mcp_config['mcpServers']
+        assert 'default' in mcp_servers
         # Custom servers should not be added due to error
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_sdk_format_with_mcpservers_wrapper(self):
         """Test _configure_llm_and_mcp returns SDK-required format with mcpServers key."""
         # Arrange
-        self.mock_user_context.get_mcp_api_key.return_value = "mcp_key"
+        self.mock_user_context.get_mcp_api_key.return_value = 'mcp_key'
 
         # Act
         llm, mcp_config = await self.service._configure_llm_and_mcp(
@@ -1535,11 +1535,11 @@ class TestLiveStatusAppConversationService:
         )
 
         # Assert - SDK expects {'mcpServers': {...}} format
-        assert "mcpServers" in mcp_config
-        assert isinstance(mcp_config["mcpServers"], dict)
+        assert 'mcpServers' in mcp_config
+        assert isinstance(mcp_config['mcpServers'], dict)
 
         # Verify structure matches SDK expectations
-        for server_name, server_config in mcp_config["mcpServers"].items():
+        for server_name, server_config in mcp_config['mcpServers'].items():
             assert isinstance(server_name, str)
             assert isinstance(server_config, dict)
 
@@ -1560,9 +1560,9 @@ class TestLiveStatusAppConversationService:
         )
 
         # Assert
-        mcp_servers = mcp_config["mcpServers"]
+        mcp_servers = mcp_config['mcpServers']
         # Should only have system default server
-        assert "default" in mcp_servers
+        assert 'default' in mcp_servers
         assert len(mcp_servers) == 1
 
     @pytest.mark.asyncio
@@ -1572,7 +1572,7 @@ class TestLiveStatusAppConversationService:
         from openhands.core.config.mcp_config import MCPConfig, MCPSSEServerConfig
 
         self.mock_user.mcp_config = MCPConfig(
-            sse_servers=[MCPSSEServerConfig(url="https://public.com/sse")]
+            sse_servers=[MCPSSEServerConfig(url='https://public.com/sse')]
         )
         self.mock_user_context.get_mcp_api_key.return_value = None
 
@@ -1582,15 +1582,15 @@ class TestLiveStatusAppConversationService:
         )
 
         # Assert
-        mcp_servers = mcp_config["mcpServers"]
-        sse_servers = {k: v for k, v in mcp_servers.items() if k.startswith("sse_")}
+        mcp_servers = mcp_config['mcpServers']
+        sse_servers = {k: v for k, v in mcp_servers.items() if k.startswith('sse_')}
 
         # Server should exist but without headers
         assert len(sse_servers) == 1
         server_config = list(sse_servers.values())[0]
-        assert "headers" not in server_config
-        assert server_config["url"] == "https://public.com/sse"
-        assert server_config["transport"] == "sse"
+        assert 'headers' not in server_config
+        assert server_config['url'] == 'https://public.com/sse'
+        assert server_config['transport'] == 'sse'
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_shttp_server_without_timeout(self):
@@ -1599,7 +1599,7 @@ class TestLiveStatusAppConversationService:
         from openhands.core.config.mcp_config import MCPConfig, MCPSHTTPServerConfig
 
         self.mock_user.mcp_config = MCPConfig(
-            shttp_servers=[MCPSHTTPServerConfig(url="https://example.com/mcp")]
+            shttp_servers=[MCPSHTTPServerConfig(url='https://example.com/mcp')]
         )
         self.mock_user_context.get_mcp_api_key.return_value = None
 
@@ -1609,13 +1609,13 @@ class TestLiveStatusAppConversationService:
         )
 
         # Assert
-        mcp_servers = mcp_config["mcpServers"]
-        shttp_servers = {k: v for k, v in mcp_servers.items() if k.startswith("shttp_")}
+        mcp_servers = mcp_config['mcpServers']
+        shttp_servers = {k: v for k, v in mcp_servers.items() if k.startswith('shttp_')}
 
         assert len(shttp_servers) == 1
         server_config = list(shttp_servers.values())[0]
         # Timeout should be included even if None (defaults to 60)
-        assert "timeout" in server_config
+        assert 'timeout' in server_config
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_stdio_server_without_env(self):
@@ -1626,7 +1626,7 @@ class TestLiveStatusAppConversationService:
         self.mock_user.mcp_config = MCPConfig(
             stdio_servers=[
                 MCPStdioServerConfig(
-                    name="simple-server", command="node", args=["app.js"]
+                    name='simple-server', command='node', args=['app.js']
                 )
             ]
         )
@@ -1638,14 +1638,14 @@ class TestLiveStatusAppConversationService:
         )
 
         # Assert
-        mcp_servers = mcp_config["mcpServers"]
-        assert "simple-server" in mcp_servers
-        server_config = mcp_servers["simple-server"]
+        mcp_servers = mcp_config['mcpServers']
+        assert 'simple-server' in mcp_servers
+        server_config = mcp_servers['simple-server']
 
         # Should not have env key if not provided
-        assert "env" not in server_config
-        assert server_config["command"] == "node"
-        assert server_config["args"] == ["app.js"]
+        assert 'env' not in server_config
+        assert server_config['command'] == 'node'
+        assert server_config['args'] == ['app.js']
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_multiple_servers_same_type(self):
@@ -1655,9 +1655,9 @@ class TestLiveStatusAppConversationService:
 
         self.mock_user.mcp_config = MCPConfig(
             sse_servers=[
-                MCPSSEServerConfig(url="https://server1.com/sse"),
-                MCPSSEServerConfig(url="https://server2.com/sse"),
-                MCPSSEServerConfig(url="https://server3.com/sse"),
+                MCPSSEServerConfig(url='https://server1.com/sse'),
+                MCPSSEServerConfig(url='https://server2.com/sse'),
+                MCPSSEServerConfig(url='https://server3.com/sse'),
             ]
         )
         self.mock_user_context.get_mcp_api_key.return_value = None
@@ -1668,8 +1668,8 @@ class TestLiveStatusAppConversationService:
         )
 
         # Assert
-        mcp_servers = mcp_config["mcpServers"]
-        sse_servers = {k: v for k, v in mcp_servers.items() if k.startswith("sse_")}
+        mcp_servers = mcp_config['mcpServers']
+        sse_servers = {k: v for k, v in mcp_servers.items() if k.startswith('sse_')}
 
         # All 3 servers should be present with unique UUID-based names
         assert len(sse_servers) == 3
@@ -1679,10 +1679,10 @@ class TestLiveStatusAppConversationService:
         assert len(set(server_names)) == 3  # All names are unique
 
         # Verify all URLs are preserved
-        urls = [v["url"] for v in sse_servers.values()]
-        assert "https://server1.com/sse" in urls
-        assert "https://server2.com/sse" in urls
-        assert "https://server3.com/sse" in urls
+        urls = [v['url'] for v in sse_servers.values()]
+        assert 'https://server1.com/sse' in urls
+        assert 'https://server2.com/sse' in urls
+        assert 'https://server3.com/sse' in urls
 
     @pytest.mark.asyncio
     async def test_configure_llm_and_mcp_mixed_server_types(self):
@@ -1697,17 +1697,17 @@ class TestLiveStatusAppConversationService:
 
         self.mock_user.mcp_config = MCPConfig(
             sse_servers=[
-                MCPSSEServerConfig(url="https://sse.example.com/sse", api_key="sse_key")
+                MCPSSEServerConfig(url='https://sse.example.com/sse', api_key='sse_key')
             ],
             shttp_servers=[
-                MCPSHTTPServerConfig(url="https://shttp.example.com/mcp", timeout=90)
+                MCPSHTTPServerConfig(url='https://shttp.example.com/mcp', timeout=90)
             ],
             stdio_servers=[
                 MCPStdioServerConfig(
-                    name="stdio-server",
-                    command="npx",
-                    args=["mcp-server"],
-                    env={"TOKEN": "value"},
+                    name='stdio-server',
+                    command='npx',
+                    args=['mcp-server'],
+                    env={'TOKEN': 'value'},
                 )
             ],
         )
@@ -1719,29 +1719,29 @@ class TestLiveStatusAppConversationService:
         )
 
         # Assert
-        mcp_servers = mcp_config["mcpServers"]
+        mcp_servers = mcp_config['mcpServers']
 
         # Check all server types are present
-        sse_count = len([k for k in mcp_servers if k.startswith("sse_")])
-        shttp_count = len([k for k in mcp_servers if k.startswith("shttp_")])
-        stdio_count = 1 if "stdio-server" in mcp_servers else 0
+        sse_count = len([k for k in mcp_servers if k.startswith('sse_')])
+        shttp_count = len([k for k in mcp_servers if k.startswith('shttp_')])
+        stdio_count = 1 if 'stdio-server' in mcp_servers else 0
 
         assert sse_count == 1
         assert shttp_count == 1
         assert stdio_count == 1
 
         # Verify each type has correct configuration
-        sse_server = next(v for k, v in mcp_servers.items() if k.startswith("sse_"))
-        assert sse_server["transport"] == "sse"
-        assert sse_server["headers"]["Authorization"] == "Bearer sse_key"
+        sse_server = next(v for k, v in mcp_servers.items() if k.startswith('sse_'))
+        assert sse_server['transport'] == 'sse'
+        assert sse_server['headers']['Authorization'] == 'Bearer sse_key'
 
-        shttp_server = next(v for k, v in mcp_servers.items() if k.startswith("shttp_"))
-        assert shttp_server["transport"] == "streamable-http"
-        assert shttp_server["timeout"] == 90
+        shttp_server = next(v for k, v in mcp_servers.items() if k.startswith('shttp_'))
+        assert shttp_server['transport'] == 'streamable-http'
+        assert shttp_server['timeout'] == 90
 
-        stdio_server = mcp_servers["stdio-server"]
-        assert stdio_server["command"] == "npx"
-        assert stdio_server["env"] == {"TOKEN": "value"}
+        stdio_server = mcp_servers['stdio-server']
+        assert stdio_server['command'] == 'npx'
+        assert stdio_server['env'] == {'TOKEN': 'value'}
 
 
 class TestPluginHandling:
@@ -1776,18 +1776,18 @@ class TestPluginHandling:
             sandbox_startup_timeout=30,
             sandbox_startup_poll_frequency=1,
             httpx_client=self.mock_httpx_client,
-            web_url="https://test.example.com",
-            openhands_provider_base_url="https://provider.example.com",
+            web_url='https://test.example.com',
+            openhands_provider_base_url='https://provider.example.com',
             access_token_hard_timeout=None,
-            app_mode="test",
+            app_mode='test',
         )
 
         # Mock user info
         self.mock_user = Mock()
-        self.mock_user.id = "test_user_123"
-        self.mock_user.llm_model = "gpt-4"
-        self.mock_user.llm_base_url = "https://api.openai.com/v1"
-        self.mock_user.llm_api_key = "test_api_key"
+        self.mock_user.id = 'test_user_123'
+        self.mock_user.llm_model = 'gpt-4'
+        self.mock_user.llm_base_url = 'https://api.openai.com/v1'
+        self.mock_user.llm_api_key = 'test_api_key'
         self.mock_user.confirmation_mode = False
         self.mock_user.search_api_key = None
         self.mock_user.condenser_max_size = None
@@ -1812,7 +1812,7 @@ class TestPluginHandling:
         assert result is None
 
         # Test with initial message but None plugins
-        initial_msg = SendMessageRequest(content=[TextContent(text="Hello world")])
+        initial_msg = SendMessageRequest(content=[TextContent(text='Hello world')])
         result = self.service._construct_initial_message_with_plugin_params(
             initial_msg, None
         )
@@ -1826,7 +1826,7 @@ class TestPluginHandling:
         )
 
         # Plugin with no parameters
-        plugins = [PluginSpec(source="github:owner/repo")]
+        plugins = [PluginSpec(source='github:owner/repo')]
 
         # Test with None initial message
         result = self.service._construct_initial_message_with_plugin_params(
@@ -1835,7 +1835,7 @@ class TestPluginHandling:
         assert result is None
 
         # Test with initial message
-        initial_msg = SendMessageRequest(content=[TextContent(text="Hello world")])
+        initial_msg = SendMessageRequest(content=[TextContent(text='Hello world')])
         result = self.service._construct_initial_message_with_plugin_params(
             initial_msg, plugins
         )
@@ -1850,8 +1850,8 @@ class TestPluginHandling:
 
         plugins = [
             PluginSpec(
-                source="github:owner/repo",
-                parameters={"api_key": "test123", "debug": True},
+                source='github:owner/repo',
+                parameters={'api_key': 'test123', 'debug': True},
             )
         ]
 
@@ -1862,9 +1862,9 @@ class TestPluginHandling:
         assert result is not None
         assert len(result.content) == 1
         assert isinstance(result.content[0], TextContent)
-        assert "Plugin Configuration Parameters:" in result.content[0].text
-        assert "- api_key: test123" in result.content[0].text
-        assert "- debug: True" in result.content[0].text
+        assert 'Plugin Configuration Parameters:' in result.content[0].text
+        assert '- api_key: test123' in result.content[0].text
+        assert '- debug: True' in result.content[0].text
         assert result.run is True
 
     def test_construct_initial_message_with_plugin_params_appends_to_message(self):
@@ -1875,14 +1875,14 @@ class TestPluginHandling:
         )
 
         initial_msg = SendMessageRequest(
-            content=[TextContent(text="Please analyze this codebase")],
+            content=[TextContent(text='Please analyze this codebase')],
             run=False,
         )
         plugins = [
             PluginSpec(
-                source="github:owner/repo",
-                ref="v1.0.0",
-                parameters={"target_dir": "/src", "verbose": True},
+                source='github:owner/repo',
+                ref='v1.0.0',
+                parameters={'target_dir': '/src', 'verbose': True},
             )
         ]
 
@@ -1893,10 +1893,10 @@ class TestPluginHandling:
         assert result is not None
         assert len(result.content) == 1
         text = result.content[0].text
-        assert text.startswith("Please analyze this codebase")
-        assert "Plugin Configuration Parameters:" in text
-        assert "- target_dir: /src" in text
-        assert "- verbose: True" in text
+        assert text.startswith('Please analyze this codebase')
+        assert 'Plugin Configuration Parameters:' in text
+        assert '- target_dir: /src' in text
+        assert '- verbose: True' in text
         assert result.run is False
 
     def test_construct_initial_message_with_plugin_params_preserves_role(self):
@@ -1907,17 +1907,17 @@ class TestPluginHandling:
         )
 
         initial_msg = SendMessageRequest(
-            role="system",
-            content=[TextContent(text="System message")],
+            role='system',
+            content=[TextContent(text='System message')],
         )
-        plugins = [PluginSpec(source="github:owner/repo", parameters={"key": "value"})]
+        plugins = [PluginSpec(source='github:owner/repo', parameters={'key': 'value'})]
 
         result = self.service._construct_initial_message_with_plugin_params(
             initial_msg, plugins
         )
 
         assert result is not None
-        assert result.role == "system"
+        assert result.role == 'system'
 
     def test_construct_initial_message_with_plugin_params_empty_content(self):
         """Test _construct_initial_message_with_plugin_params handles empty content list."""
@@ -1927,7 +1927,7 @@ class TestPluginHandling:
         )
 
         initial_msg = SendMessageRequest(content=[])
-        plugins = [PluginSpec(source="github:owner/repo", parameters={"key": "value"})]
+        plugins = [PluginSpec(source='github:owner/repo', parameters={'key': 'value'})]
 
         result = self.service._construct_initial_message_with_plugin_params(
             initial_msg, plugins
@@ -1936,7 +1936,7 @@ class TestPluginHandling:
         assert result is not None
         assert len(result.content) == 1
         assert isinstance(result.content[0], TextContent)
-        assert "Plugin Configuration Parameters:" in result.content[0].text
+        assert 'Plugin Configuration Parameters:' in result.content[0].text
 
     def test_construct_initial_message_with_multiple_plugins(self):
         """Test _construct_initial_message_with_plugin_params handles multiple plugins."""
@@ -1947,12 +1947,12 @@ class TestPluginHandling:
 
         plugins = [
             PluginSpec(
-                source="github:owner/plugin1",
-                parameters={"key1": "value1"},
+                source='github:owner/plugin1',
+                parameters={'key1': 'value1'},
             ),
             PluginSpec(
-                source="github:owner/plugin2",
-                parameters={"key2": "value2"},
+                source='github:owner/plugin2',
+                parameters={'key2': 'value2'},
             ),
         ]
 
@@ -1964,16 +1964,16 @@ class TestPluginHandling:
         assert len(result.content) == 1
         assert isinstance(result.content[0], TextContent)
         text = result.content[0].text
-        assert "Plugin Configuration Parameters:" in text
+        assert 'Plugin Configuration Parameters:' in text
         # Multiple plugins should show grouped by plugin name
-        assert "plugin1" in text
-        assert "plugin2" in text
-        assert "key1: value1" in text
-        assert "key2: value2" in text
+        assert 'plugin1' in text
+        assert 'plugin2' in text
+        assert 'key1: value1' in text
+        assert 'key2: value2' in text
 
     @pytest.mark.asyncio
     @patch(
-        "openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl"
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl'
     )
     async def test_finalize_conversation_request_with_plugins(
         self, mock_experiment_manager
@@ -1986,8 +1986,8 @@ class TestPluginHandling:
         # Arrange
         mock_agent = Mock(spec=Agent)
         mock_llm = Mock(spec=LLM)
-        mock_llm.model = "gpt-4"
-        mock_llm.usage_id = "agent"
+        mock_llm.model = 'gpt-4'
+        mock_llm.usage_id = 'agent'
 
         mock_updated_agent = Mock(spec=Agent)
         mock_updated_agent.llm = mock_llm
@@ -1996,14 +1996,14 @@ class TestPluginHandling:
             mock_updated_agent
         )
 
-        workspace = LocalWorkspace(working_dir="/test")
-        secrets = {"test": StaticSecret(value="secret")}
+        workspace = LocalWorkspace(working_dir='/test')
+        secrets = {'test': StaticSecret(value='secret')}
 
         plugins = [
             PluginSpec(
-                source="github:owner/my-plugin",
-                ref="v1.0.0",
-                parameters={"api_key": "test123"},
+                source='github:owner/my-plugin',
+                ref='v1.0.0',
+                parameters={'api_key': 'test123'},
             )
         ]
 
@@ -2018,7 +2018,7 @@ class TestPluginHandling:
             self.mock_sandbox,
             None,
             None,
-            "/test/dir",
+            '/test/dir',
             plugins=plugins,
         )
 
@@ -2026,18 +2026,18 @@ class TestPluginHandling:
         assert isinstance(result, StartConversationRequest)
         assert result.plugins is not None
         assert len(result.plugins) == 1
-        assert result.plugins[0].source == "github:owner/my-plugin"
-        assert result.plugins[0].ref == "v1.0.0"
+        assert result.plugins[0].source == 'github:owner/my-plugin'
+        assert result.plugins[0].ref == 'v1.0.0'
         # Also verify initial message contains plugin params
         assert result.initial_message is not None
         assert (
-            "Plugin Configuration Parameters:" in result.initial_message.content[0].text
+            'Plugin Configuration Parameters:' in result.initial_message.content[0].text
         )
-        assert "- api_key: test123" in result.initial_message.content[0].text
+        assert '- api_key: test123' in result.initial_message.content[0].text
 
     @pytest.mark.asyncio
     @patch(
-        "openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl"
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl'
     )
     async def test_finalize_conversation_request_without_plugins(
         self, mock_experiment_manager
@@ -2046,8 +2046,8 @@ class TestPluginHandling:
         # Arrange
         mock_agent = Mock(spec=Agent)
         mock_llm = Mock(spec=LLM)
-        mock_llm.model = "gpt-4"
-        mock_llm.usage_id = "agent"
+        mock_llm.model = 'gpt-4'
+        mock_llm.usage_id = 'agent'
 
         mock_updated_agent = Mock(spec=Agent)
         mock_updated_agent.llm = mock_llm
@@ -2056,7 +2056,7 @@ class TestPluginHandling:
             mock_updated_agent
         )
 
-        workspace = LocalWorkspace(working_dir="/test")
+        workspace = LocalWorkspace(working_dir='/test')
         secrets = {}
 
         # Act
@@ -2070,7 +2070,7 @@ class TestPluginHandling:
             self.mock_sandbox,
             None,
             None,
-            "/test/dir",
+            '/test/dir',
             plugins=None,
         )
 
@@ -2080,7 +2080,7 @@ class TestPluginHandling:
 
     @pytest.mark.asyncio
     @patch(
-        "openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl"
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl'
     )
     async def test_finalize_conversation_request_plugin_without_ref(
         self, mock_experiment_manager
@@ -2093,8 +2093,8 @@ class TestPluginHandling:
         # Arrange
         mock_agent = Mock(spec=Agent)
         mock_llm = Mock(spec=LLM)
-        mock_llm.model = "gpt-4"
-        mock_llm.usage_id = "agent"
+        mock_llm.model = 'gpt-4'
+        mock_llm.usage_id = 'agent'
 
         mock_updated_agent = Mock(spec=Agent)
         mock_updated_agent.llm = mock_llm
@@ -2103,11 +2103,11 @@ class TestPluginHandling:
             mock_updated_agent
         )
 
-        workspace = LocalWorkspace(working_dir="/test")
+        workspace = LocalWorkspace(working_dir='/test')
         secrets = {}
 
         # Plugin without ref or parameters
-        plugins = [PluginSpec(source="github:owner/my-plugin")]
+        plugins = [PluginSpec(source='github:owner/my-plugin')]
 
         # Act
         result = await self.service._finalize_conversation_request(
@@ -2120,7 +2120,7 @@ class TestPluginHandling:
             self.mock_sandbox,
             None,
             None,
-            "/test/dir",
+            '/test/dir',
             plugins=plugins,
         )
 
@@ -2128,14 +2128,14 @@ class TestPluginHandling:
         assert isinstance(result, StartConversationRequest)
         assert result.plugins is not None
         assert len(result.plugins) == 1
-        assert result.plugins[0].source == "github:owner/my-plugin"
+        assert result.plugins[0].source == 'github:owner/my-plugin'
         assert result.plugins[0].ref is None
         # No parameters, so initial message should be None
         assert result.initial_message is None
 
     @pytest.mark.asyncio
     @patch(
-        "openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl"
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl'
     )
     async def test_finalize_conversation_request_plugin_with_repo_path(
         self, mock_experiment_manager
@@ -2148,8 +2148,8 @@ class TestPluginHandling:
         # Arrange
         mock_agent = Mock(spec=Agent)
         mock_llm = Mock(spec=LLM)
-        mock_llm.model = "gpt-4"
-        mock_llm.usage_id = "agent"
+        mock_llm.model = 'gpt-4'
+        mock_llm.usage_id = 'agent'
 
         mock_updated_agent = Mock(spec=Agent)
         mock_updated_agent.llm = mock_llm
@@ -2158,15 +2158,15 @@ class TestPluginHandling:
             mock_updated_agent
         )
 
-        workspace = LocalWorkspace(working_dir="/test")
+        workspace = LocalWorkspace(working_dir='/test')
         secrets = {}
 
         # Plugin with repo_path (for marketplace repos containing multiple plugins)
         plugins = [
             PluginSpec(
-                source="github:owner/marketplace-repo",
-                ref="main",
-                repo_path="plugins/city-weather",
+                source='github:owner/marketplace-repo',
+                ref='main',
+                repo_path='plugins/city-weather',
             )
         ]
 
@@ -2181,7 +2181,7 @@ class TestPluginHandling:
             self.mock_sandbox,
             None,
             None,
-            "/test/dir",
+            '/test/dir',
             plugins=plugins,
         )
 
@@ -2189,13 +2189,13 @@ class TestPluginHandling:
         assert isinstance(result, StartConversationRequest)
         assert result.plugins is not None
         assert len(result.plugins) == 1
-        assert result.plugins[0].source == "github:owner/marketplace-repo"
-        assert result.plugins[0].ref == "main"
-        assert result.plugins[0].repo_path == "plugins/city-weather"
+        assert result.plugins[0].source == 'github:owner/marketplace-repo'
+        assert result.plugins[0].ref == 'main'
+        assert result.plugins[0].repo_path == 'plugins/city-weather'
 
     @pytest.mark.asyncio
     @patch(
-        "openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl"
+        'openhands.app_server.app_conversation.live_status_app_conversation_service.ExperimentManagerImpl'
     )
     async def test_finalize_conversation_request_multiple_plugins(
         self, mock_experiment_manager
@@ -2208,8 +2208,8 @@ class TestPluginHandling:
         # Arrange
         mock_agent = Mock(spec=Agent)
         mock_llm = Mock(spec=LLM)
-        mock_llm.model = "gpt-4"
-        mock_llm.usage_id = "agent"
+        mock_llm.model = 'gpt-4'
+        mock_llm.usage_id = 'agent'
 
         mock_updated_agent = Mock(spec=Agent)
         mock_updated_agent.llm = mock_llm
@@ -2218,17 +2218,17 @@ class TestPluginHandling:
             mock_updated_agent
         )
 
-        workspace = LocalWorkspace(working_dir="/test")
+        workspace = LocalWorkspace(working_dir='/test')
         secrets = {}
 
         # Multiple plugins
         plugins = [
-            PluginSpec(source="github:owner/security-plugin", ref="v2.0.0"),
+            PluginSpec(source='github:owner/security-plugin', ref='v2.0.0'),
             PluginSpec(
-                source="github:owner/monorepo",
-                repo_path="plugins/logging",
+                source='github:owner/monorepo',
+                repo_path='plugins/logging',
             ),
-            PluginSpec(source="/local/path/to/plugin"),
+            PluginSpec(source='/local/path/to/plugin'),
         ]
 
         # Act
@@ -2242,7 +2242,7 @@ class TestPluginHandling:
             self.mock_sandbox,
             None,
             None,
-            "/test/dir",
+            '/test/dir',
             plugins=plugins,
         )
 
@@ -2250,11 +2250,11 @@ class TestPluginHandling:
         assert isinstance(result, StartConversationRequest)
         assert result.plugins is not None
         assert len(result.plugins) == 3
-        assert result.plugins[0].source == "github:owner/security-plugin"
-        assert result.plugins[0].ref == "v2.0.0"
-        assert result.plugins[1].source == "github:owner/monorepo"
-        assert result.plugins[1].repo_path == "plugins/logging"
-        assert result.plugins[2].source == "/local/path/to/plugin"
+        assert result.plugins[0].source == 'github:owner/security-plugin'
+        assert result.plugins[0].ref == 'v2.0.0'
+        assert result.plugins[1].source == 'github:owner/monorepo'
+        assert result.plugins[1].repo_path == 'plugins/logging'
+        assert result.plugins[2].source == '/local/path/to/plugin'
 
     @pytest.mark.asyncio
     async def test_build_start_conversation_request_for_user_with_plugins(self):
@@ -2271,9 +2271,9 @@ class TestPluginHandling:
 
         plugins = [
             PluginSpec(
-                source="https://github.com/org/plugin.git",
-                ref="main",
-                parameters={"config_file": "custom.yaml"},
+                source='https://github.com/org/plugin.git',
+                ref='main',
+                parameters={'config_file': 'custom.yaml'},
             )
         ]
 
@@ -2287,14 +2287,14 @@ class TestPluginHandling:
             None,
             None,
             None,
-            "/workspace",
+            '/workspace',
             plugins=plugins,
         )
 
         # Assert
         mock_finalize.assert_called_once()
         call_kwargs = mock_finalize.call_args.kwargs
-        assert call_kwargs["plugins"] == plugins
+        assert call_kwargs['plugins'] == plugins
 
     @pytest.mark.asyncio
     async def test_build_start_conversation_request_for_user_without_plugins(self):
@@ -2315,13 +2315,13 @@ class TestPluginHandling:
             None,
             None,
             None,
-            "/workspace",
+            '/workspace',
         )
 
         # Assert
         mock_finalize.assert_called_once()
         call_kwargs = mock_finalize.call_args.kwargs
-        assert call_kwargs.get("plugins") is None
+        assert call_kwargs.get('plugins') is None
 
 
 class TestPluginSpecModel:
@@ -2334,16 +2334,16 @@ class TestPluginSpecModel:
         )
 
         plugin = PluginSpec(
-            source="github:owner/repo",
-            ref="v1.0.0",
-            repo_path="plugins/my-plugin",
-            parameters={"key1": "value1", "key2": 123, "key3": True},
+            source='github:owner/repo',
+            ref='v1.0.0',
+            repo_path='plugins/my-plugin',
+            parameters={'key1': 'value1', 'key2': 123, 'key3': True},
         )
 
-        assert plugin.source == "github:owner/repo"
-        assert plugin.ref == "v1.0.0"
-        assert plugin.repo_path == "plugins/my-plugin"
-        assert plugin.parameters == {"key1": "value1", "key2": 123, "key3": True}
+        assert plugin.source == 'github:owner/repo'
+        assert plugin.ref == 'v1.0.0'
+        assert plugin.repo_path == 'plugins/my-plugin'
+        assert plugin.parameters == {'key1': 'value1', 'key2': 123, 'key3': True}
 
     def test_plugin_spec_with_only_source(self):
         """Test PluginSpec with only source provided."""
@@ -2351,9 +2351,9 @@ class TestPluginSpecModel:
             PluginSpec,
         )
 
-        plugin = PluginSpec(source="https://github.com/owner/repo.git")
+        plugin = PluginSpec(source='https://github.com/owner/repo.git')
 
-        assert plugin.source == "https://github.com/owner/repo.git"
+        assert plugin.source == 'https://github.com/owner/repo.git'
         assert plugin.ref is None
         assert plugin.repo_path is None
         assert plugin.parameters is None
@@ -2365,18 +2365,18 @@ class TestPluginSpecModel:
         )
 
         plugin = PluginSpec(
-            source="github:owner/repo",
-            ref="main",
-            repo_path="plugins/my-plugin",
-            parameters={"debug": True},
+            source='github:owner/repo',
+            ref='main',
+            repo_path='plugins/my-plugin',
+            parameters={'debug': True},
         )
 
         json_data = plugin.model_dump()
         assert json_data == {
-            "source": "github:owner/repo",
-            "ref": "main",
-            "repo_path": "plugins/my-plugin",
-            "parameters": {"debug": True},
+            'source': 'github:owner/repo',
+            'ref': 'main',
+            'repo_path': 'plugins/my-plugin',
+            'parameters': {'debug': True},
         }
 
     def test_plugin_spec_deserialization(self):
@@ -2386,18 +2386,18 @@ class TestPluginSpecModel:
         )
 
         data = {
-            "source": "github:owner/repo",
-            "ref": "v2.0.0",
-            "repo_path": "plugins/weather",
-            "parameters": {"timeout": 30},
+            'source': 'github:owner/repo',
+            'ref': 'v2.0.0',
+            'repo_path': 'plugins/weather',
+            'parameters': {'timeout': 30},
         }
 
         plugin = PluginSpec.model_validate(data)
 
-        assert plugin.source == "github:owner/repo"
-        assert plugin.ref == "v2.0.0"
-        assert plugin.repo_path == "plugins/weather"
-        assert plugin.parameters == {"timeout": 30}
+        assert plugin.source == 'github:owner/repo'
+        assert plugin.ref == 'v2.0.0'
+        assert plugin.repo_path == 'plugins/weather'
+        assert plugin.parameters == {'timeout': 30}
 
 
 class TestAppConversationStartRequestWithPlugins:
@@ -2412,22 +2412,22 @@ class TestAppConversationStartRequestWithPlugins:
 
         plugins = [
             PluginSpec(
-                source="github:owner/my-plugin",
-                ref="v1.0.0",
-                parameters={"api_key": "test"},
+                source='github:owner/my-plugin',
+                ref='v1.0.0',
+                parameters={'api_key': 'test'},
             )
         ]
 
         request = AppConversationStartRequest(
-            title="Test conversation",
+            title='Test conversation',
             plugins=plugins,
         )
 
         assert request.plugins is not None
         assert len(request.plugins) == 1
-        assert request.plugins[0].source == "github:owner/my-plugin"
-        assert request.plugins[0].ref == "v1.0.0"
-        assert request.plugins[0].parameters == {"api_key": "test"}
+        assert request.plugins[0].source == 'github:owner/my-plugin'
+        assert request.plugins[0].ref == 'v1.0.0'
+        assert request.plugins[0].parameters == {'api_key': 'test'}
 
     def test_start_request_without_plugins(self):
         """Test AppConversationStartRequest without plugins field (backwards compatible)."""
@@ -2436,7 +2436,7 @@ class TestAppConversationStartRequestWithPlugins:
         )
 
         request = AppConversationStartRequest(
-            title="Test conversation",
+            title='Test conversation',
         )
 
         assert request.plugins is None
@@ -2448,14 +2448,14 @@ class TestAppConversationStartRequestWithPlugins:
             PluginSpec,
         )
 
-        plugins = [PluginSpec(source="github:owner/repo")]
+        plugins = [PluginSpec(source='github:owner/repo')]
         request = AppConversationStartRequest(plugins=plugins)
 
         json_data = request.model_dump()
 
-        assert "plugins" in json_data
-        assert len(json_data["plugins"]) == 1
-        assert json_data["plugins"][0]["source"] == "github:owner/repo"
+        assert 'plugins' in json_data
+        assert len(json_data['plugins']) == 1
+        assert json_data['plugins'][0]['source'] == 'github:owner/repo'
 
     def test_start_request_deserialization_with_plugins(self):
         """Test AppConversationStartRequest deserialization from JSON with plugins."""
@@ -2464,12 +2464,12 @@ class TestAppConversationStartRequestWithPlugins:
         )
 
         data = {
-            "title": "Test",
-            "plugins": [
+            'title': 'Test',
+            'plugins': [
                 {
-                    "source": "github:owner/plugin",
-                    "ref": "main",
-                    "parameters": {"key": "value"},
+                    'source': 'github:owner/plugin',
+                    'ref': 'main',
+                    'parameters': {'key': 'value'},
                 },
             ],
         }
@@ -2478,9 +2478,9 @@ class TestAppConversationStartRequestWithPlugins:
 
         assert request.plugins is not None
         assert len(request.plugins) == 1
-        assert request.plugins[0].source == "github:owner/plugin"
-        assert request.plugins[0].ref == "main"
-        assert request.plugins[0].parameters == {"key": "value"}
+        assert request.plugins[0].source == 'github:owner/plugin'
+        assert request.plugins[0].ref == 'main'
+        assert request.plugins[0].parameters == {'key': 'value'}
 
     def test_start_request_with_multiple_plugins(self):
         """Test AppConversationStartRequest with multiple plugins."""
@@ -2490,18 +2490,18 @@ class TestAppConversationStartRequestWithPlugins:
         )
 
         plugins = [
-            PluginSpec(source="github:owner/plugin1", ref="v1.0.0"),
-            PluginSpec(source="github:owner/plugin2", repo_path="plugins/sub"),
-            PluginSpec(source="/local/path"),
+            PluginSpec(source='github:owner/plugin1', ref='v1.0.0'),
+            PluginSpec(source='github:owner/plugin2', repo_path='plugins/sub'),
+            PluginSpec(source='/local/path'),
         ]
 
         request = AppConversationStartRequest(
-            title="Test conversation",
+            title='Test conversation',
             plugins=plugins,
         )
 
         assert request.plugins is not None
         assert len(request.plugins) == 3
-        assert request.plugins[0].source == "github:owner/plugin1"
-        assert request.plugins[1].repo_path == "plugins/sub"
-        assert request.plugins[2].source == "/local/path"
+        assert request.plugins[0].source == 'github:owner/plugin1'
+        assert request.plugins[1].repo_path == 'plugins/sub'
+        assert request.plugins[2].source == '/local/path'
