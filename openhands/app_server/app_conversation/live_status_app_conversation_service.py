@@ -980,7 +980,7 @@ class LiveStatusAppConversationService(AppConversationServiceBase):
             return initial_message
 
         # Collect all parameters from all plugins
-        all_params: list[tuple[str, str, str, Any]] = []  # (plugin_name, key, value)
+        all_params: list[tuple[str, str, Any]] = []  # (plugin_name, key, value)
         for plugin in plugins:
             if plugin.parameters:
                 plugin_name = (
