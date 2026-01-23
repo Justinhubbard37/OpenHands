@@ -27,11 +27,13 @@ Optional environment variables:
 
 import os
 import sys
+import threading
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import resend
 from keycloak.exceptions import KeycloakError
+from ratelimit import limits, sleep_and_retry
 from resend.exceptions import ResendError
 from server.auth.token_manager import get_keycloak_admin
 from tenacity import (
@@ -96,38 +98,34 @@ class RateLimitError(ResendSyncError):
     pass
 
 
-class RateLimiter:
-    """Simple rate limiter to ensure we don't exceed API rate limits.
+# Thread-safe semaphore for rate limiting across all Resend API calls
+# This ensures we don't exceed 2 requests per second across all functions
+_resend_api_semaphore = threading.Semaphore(1)
 
-    This tracks the time of the last request and ensures we wait long enough
-    between requests to respect the rate limit.
+# Rate limit: 2 calls per 1 second (Resend API limit)
+RATE_LIMIT_CALLS = 2
+RATE_LIMIT_PERIOD = 1  # seconds
+
+
+@sleep_and_retry
+@limits(calls=RATE_LIMIT_CALLS, period=RATE_LIMIT_PERIOD)
+def _rate_limited_resend_call(api_func, *args, **kwargs):
+    """Execute a Resend API call with rate limiting.
+
+    This function uses the ratelimit library to ensure we don't exceed
+    the Resend API rate limit of 2 requests per second. The semaphore
+    provides thread safety for concurrent access.
+
+    Args:
+        api_func: The Resend API function to call.
+        *args: Positional arguments to pass to the API function.
+        **kwargs: Keyword arguments to pass to the API function.
+
+    Returns:
+        The result of the API call.
     """
-
-    def __init__(self, requests_per_second: float):
-        """Initialize the rate limiter.
-
-        Args:
-            requests_per_second: Maximum number of requests per second.
-        """
-        self.requests_per_second = requests_per_second
-        self.min_interval = 1.0 / requests_per_second
-        self.last_request_time = 0.0
-
-    def wait_if_needed(self):
-        """Wait if necessary to respect the rate limit."""
-        now = time.time()
-        time_since_last_request = now - self.last_request_time
-
-        if time_since_last_request < self.min_interval:
-            sleep_time = self.min_interval - time_since_last_request
-            logger.debug(f'Rate limiter sleeping for {sleep_time:.3f} seconds')
-            time.sleep(sleep_time)
-
-        self.last_request_time = time.time()
-
-
-# Global rate limiter instance that will be initialized in main
-rate_limiter: Optional[RateLimiter] = None
+    with _resend_api_semaphore:
+        return api_func(*args, **kwargs)
 
 
 def is_rate_limit_error(error: Exception) -> bool:
@@ -245,11 +243,9 @@ def get_resend_contacts(audience_id: str) -> Dict[str, Dict[str, Any]]:
     print('getting resend contacts')
     print('has resend contacts', hasattr(resend, 'Contacts'))
     try:
-        # Use rate limiter before making request
-        if rate_limiter:
-            rate_limiter.wait_if_needed()
-
-        contacts = resend.Contacts.list(audience_id).get('data', [])
+        contacts = _rate_limited_resend_call(resend.Contacts.list, audience_id).get(
+            'data', []
+        )
         # Create a dictionary mapping email addresses to contact data for
         # efficient lookup
         return {contact['email'].lower(): contact for contact in contacts}
@@ -274,8 +270,8 @@ def get_resend_contacts(audience_id: str) -> Dict[str, Dict[str, Any]]:
 def add_contact_to_resend(
     audience_id: str,
     email: str,
-    first_name: Optional[str] = None,
-    last_name: Optional[str] = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
 ) -> Dict[str, Any]:
     """Add a contact to the Resend audience with rate limiting.
 
@@ -293,10 +289,6 @@ def add_contact_to_resend(
         RateLimitError: If we hit a rate limit (will be retried).
     """
     try:
-        # Use rate limiter before making request
-        if rate_limiter:
-            rate_limiter.wait_if_needed()
-
         params = {'audience_id': audience_id, 'email': email}
 
         if first_name:
@@ -305,7 +297,7 @@ def add_contact_to_resend(
         if last_name:
             params['last_name'] = last_name
 
-        return resend.Contacts.create(params)
+        return _rate_limited_resend_call(resend.Contacts.create, params)
     except ResendError as e:
         if is_rate_limit_error(e):
             logger.warning(f'Hit rate limit adding contact {email}')
@@ -325,8 +317,8 @@ def add_contact_to_resend(
 )
 def send_welcome_email(
     email: str,
-    first_name: Optional[str] = None,
-    last_name: Optional[str] = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
 ) -> Dict[str, Any]:
     """Send a welcome email to a new contact.
 
@@ -377,12 +369,8 @@ def send_welcome_email(
             """,
         }
 
-        # Use rate limiter before making request
-        if rate_limiter:
-            rate_limiter.wait_if_needed()
-
-        # Send the email
-        response = resend.Emails.send(params)
+        # Send the email using rate-limited wrapper
+        response = _rate_limited_resend_call(resend.Emails.send, params)
         logger.info(f'Welcome email sent to {email}')
         return response
     except ResendError as e:
@@ -398,11 +386,10 @@ def send_welcome_email(
 
 def sync_users_to_resend():
     """Sync users from Keycloak to Resend."""
-    global rate_limiter
-
-    # Initialize the global rate limiter
-    rate_limiter = RateLimiter(RATE_LIMIT)
-    logger.info(f'Initialized rate limiter with {RATE_LIMIT} requests per second')
+    logger.info(
+        f'Rate limiting configured: {RATE_LIMIT_CALLS} requests per '
+        f'{RATE_LIMIT_PERIOD} second(s)'
+    )
 
     # Check required environment variables
     required_vars = {

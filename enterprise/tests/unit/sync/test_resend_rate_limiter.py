@@ -1,42 +1,14 @@
-"""Tests for the RateLimiter class in resend_keycloak.py.
+"""Tests for the rate limiting functionality in resend_keycloak.py.
 
 These tests verify the rate limiting functionality that prevents
 hitting Resend API rate limits (2 requests per second).
 """
 
+import threading
 import time
 
+from ratelimit import limits, sleep_and_retry
 from resend.exceptions import ResendError
-
-
-# Copy of the RateLimiter class for testing without full module imports
-class RateLimiter:
-    """Simple rate limiter to ensure we don't exceed API rate limits.
-
-    This tracks the time of the last request and ensures we wait long enough
-    between requests to respect the rate limit.
-    """
-
-    def __init__(self, requests_per_second: float):
-        """Initialize the rate limiter.
-
-        Args:
-            requests_per_second: Maximum number of requests per second.
-        """
-        self.requests_per_second = requests_per_second
-        self.min_interval = 1.0 / requests_per_second
-        self.last_request_time = 0.0
-
-    def wait_if_needed(self):
-        """Wait if necessary to respect the rate limit."""
-        now = time.time()
-        time_since_last_request = now - self.last_request_time
-
-        if time_since_last_request < self.min_interval:
-            sleep_time = self.min_interval - time_since_last_request
-            time.sleep(sleep_time)
-
-        self.last_request_time = time.time()
 
 
 # Copy of the exception classes for testing
@@ -71,74 +43,60 @@ def is_rate_limit_error(error: Exception) -> bool:
     return False
 
 
-class TestRateLimiter:
-    """Tests for the RateLimiter class."""
+class TestRateLimitedResendCall:
+    """Tests for the rate-limited Resend API call wrapper."""
 
-    def test_rate_limiter_initialization(self):
-        """Test that RateLimiter initializes correctly."""
-        rate_limiter = RateLimiter(2.0)  # 2 requests per second
-        assert rate_limiter.requests_per_second == 2.0
-        assert rate_limiter.min_interval == 0.5
-        assert rate_limiter.last_request_time == 0.0
+    def test_rate_limiter_enforces_rate_limit(self):
+        """Test that the ratelimit library enforces the rate limit."""
+        # Create a test rate limiter with 2 calls per second
+        call_count = 0
+        semaphore = threading.Semaphore(1)
 
-    def test_rate_limiter_first_request_no_wait(self):
-        """Test that the first request doesn't wait."""
-        rate_limiter = RateLimiter(2.0)
+        @sleep_and_retry
+        @limits(calls=2, period=1)
+        def rate_limited_call():
+            nonlocal call_count
+            with semaphore:
+                call_count += 1
+                return call_count
+
         start_time = time.time()
-        rate_limiter.wait_if_needed()
+
+        # Make 4 calls - should take at least 1 second (2 calls per second)
+        for _ in range(4):
+            rate_limited_call()
+
         elapsed = time.time() - start_time
 
-        # First request should not wait (or wait very little)
-        assert elapsed < 0.1
+        # 4 calls at 2 calls/sec should take at least 1 second
+        assert elapsed >= 0.9  # Allow small tolerance
+        assert call_count == 4
 
-    def test_rate_limiter_enforces_minimum_interval(self):
-        """Test that RateLimiter enforces minimum interval between requests."""
-        rate_limiter = RateLimiter(2.0)  # 0.5 second minimum interval
+    def test_rate_limiter_with_semaphore_thread_safety(self):
+        """Test that the semaphore provides thread safety."""
+        results = []
+        semaphore = threading.Semaphore(1)
 
-        # First request
-        rate_limiter.wait_if_needed()
-        first_request_time = time.time()
+        @sleep_and_retry
+        @limits(calls=10, period=1)  # Higher limit for this test
+        def rate_limited_call(value):
+            with semaphore:
+                results.append(value)
+                return value
 
-        # Second request immediately after
-        rate_limiter.wait_if_needed()
-        second_request_time = time.time()
+        # Make calls from multiple threads
+        threads = []
+        for i in range(5):
+            t = threading.Thread(target=rate_limited_call, args=(i,))
+            threads.append(t)
+            t.start()
 
-        # Should have waited at least 0.5 seconds
-        elapsed = second_request_time - first_request_time
-        assert elapsed >= 0.45  # Allow small tolerance
+        for t in threads:
+            t.join()
 
-    def test_rate_limiter_no_wait_if_enough_time_passed(self):
-        """Test that RateLimiter doesn't wait if enough time has passed."""
-        rate_limiter = RateLimiter(2.0)
-
-        # First request
-        rate_limiter.wait_if_needed()
-
-        # Wait longer than the minimum interval
-        time.sleep(0.6)
-
-        # Second request should not need to wait
-        start_time = time.time()
-        rate_limiter.wait_if_needed()
-        elapsed = time.time() - start_time
-
-        # Should not have waited (or waited very little)
-        assert elapsed < 0.1
-
-    def test_rate_limiter_multiple_requests(self):
-        """Test that RateLimiter properly spaces multiple requests."""
-        rate_limiter = RateLimiter(2.0)  # 0.5 second minimum interval
-
-        start_time = time.time()
-
-        # Make 5 requests
-        for _ in range(5):
-            rate_limiter.wait_if_needed()
-
-        total_elapsed = time.time() - start_time
-
-        # 5 requests at 2 req/sec should take at least 2 seconds (4 intervals)
-        assert total_elapsed >= 1.8  # Allow small tolerance
+        # All calls should have completed
+        assert len(results) == 5
+        assert set(results) == {0, 1, 2, 3, 4}
 
 
 class TestIsRateLimitError:
