@@ -9,14 +9,17 @@
 import os
 import warnings
 
+# Suppress deprecation warnings early, before any imports that might trigger them
+# This handles import-time warnings from dependencies like speech_recognition
+warnings.filterwarnings('ignore', category=DeprecationWarning, message=r'aifc was removed')
+warnings.filterwarnings('ignore', category=SyntaxWarning, module=r'pydub\.utils')
+
 import uvicorn
 
 from openhands.core.logger import get_uvicorn_json_log_config
 
 
 def main():
-    # Suppress SyntaxWarnings from pydub.utils about invalid escape sequences
-    warnings.filterwarnings('ignore', category=SyntaxWarning, module=r'pydub\.utils')
 
     # When LOG_JSON=1, configure Uvicorn to emit JSON logs for error/access
     log_config = None

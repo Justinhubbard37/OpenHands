@@ -11,10 +11,15 @@ import os
 import re
 import sys
 import traceback
+import warnings
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 from types import TracebackType
 from typing import Any, Literal, Mapping, MutableMapping, TextIO
+
+# Suppress deprecation warnings from dependencies before they're imported
+# aifc was removed in Python 3.13 but speech_recognition still references it
+warnings.filterwarnings('ignore', category=DeprecationWarning, message=r'aifc was removed')
 
 import litellm
 from pythonjsonlogger.json import JsonFormatter
