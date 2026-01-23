@@ -26,6 +26,7 @@ from integrations.utils import (
 from integrations.v1_utils import get_saas_user_auth
 from jinja2 import Environment, FileSystemLoader
 from pydantic import SecretStr
+from openhands.integrations.service_types import AuthenticationError
 from server.auth.auth_error import ExpiredError
 from server.auth.constants import GITHUB_APP_CLIENT_ID, GITHUB_APP_PRIVATE_KEY
 from server.auth.token_manager import TokenManager
@@ -348,7 +349,7 @@ class GithubManager(Manager):
 
                 msg_info = f'@{user_info.username} please set a valid LLM API key in [OpenHands Cloud]({HOST_URL}) before starting a job.'
 
-            except (ExpiredError, SessionExpiredError) as e:
+            except (AuthenticationError, ExpiredError, SessionExpiredError) as e:
                 logger.warning(
                     f'[GitHub] Session expired for user {user_info.username}: {str(e)}'
                 )
